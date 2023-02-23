@@ -1,0 +1,24 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "web-content-extraction-benchmark"
+version = "1.0.0"
+description = "Reproduction study on web content extraction."
+authors = [
+    "Janek Bevendorff",
+    "Sanket Gupta"
+]
+readme = "README.md"
+license = "Apache-2.0"
+packages = [
+    { include = "extraction_benchmark" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+click = "^8.1.3"
+
+[tool.poetry.scripts]
+wceb = "extraction_benchmark.main:main"
