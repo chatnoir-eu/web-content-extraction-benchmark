@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import click
+import os
 
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+DATASET_PATH = os.path.join(ROOT_PATH, 'datasets')
 
-@click.command()
-def cluster():
-    pass
+DATASET_RAW_PATH = os.path.join(DATASET_PATH, 'raw')
+DATASET_TRUTH_PATH = os.path.join(DATASET_PATH, 'json-format', 'ground-truth')
+
+OUTPUTS_PATH = os.path.join(ROOT_PATH, 'outputs')
+MODEL_OUTPUTS_PATH = os.path.join(OUTPUTS_PATH, 'model-outputs')
+METRICS_PATH = os.path.join(OUTPUTS_PATH, 'metrics-computed')
+METRICS_AGG_PATH = os.path.join(METRICS_PATH, '_aggregated')
