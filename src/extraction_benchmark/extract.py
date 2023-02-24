@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import ctypes
+import gzip
+import os
 from functools import partial
 from itertools import product
 import json
@@ -31,6 +33,36 @@ def _dump_json(filepath, extracted):
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     with open(filepath, 'w') as f:
         json.dump(extracted, f, indent=4, ensure_ascii=False)
+
+
+def extract_ground_truth(datasets):
+    """
+    Convert ground truth from raw dataset to JSON format.
+
+    :param datasets: list of input dataset
+    """
+    for ds in datasets:
+        with click.progressbar(read_dataset(ds, True), label=f'Converting truth of {ds}') as ds_progress:
+            extracted = {k: v for k, v in ds_progress}
+
+        _dump_json(os.path.join(DATASET_TRUTH_PATH, ds, ds + '.json'), extracted)
+
+
+def extract_raw_html(datasets):
+    """
+    Convert HTML files from raw dataset to JSON format.
+
+    :param datasets: list of input dataset
+    """
+    for ds in datasets:
+        out_dir = os.path.join(DATASET_HTML_PATH, ds)
+        os.makedirs(out_dir, exist_ok=True)
+        with click.progressbar(read_dataset(ds, False), label=f'Converting HTML of {ds}') as ds_progress:
+            for page_id, val in ds_progress:
+                if not val.get('html'):
+                    continue
+                with gzip.GzipFile(os.path.join(out_dir, page_id + '.html.gz'), 'w') as f:
+                    f.write(val['html'].encode())
 
 
 def _extract_with_model_expand_args(args, skip_existing=False):
@@ -80,26 +112,15 @@ def _extract_with_model(model, dataset, skip_existing=False):
     _dump_json(out_path, extracted)
 
 
-def _extract_ground_truth(input_dataset):
-    with click.progressbar(read_dataset(input_dataset, True), label=f'Extracting truth of {input_dataset}') as ds:
-        extracted = {k: v for k, v in ds}
-    _dump_json(os.path.join(DATASET_TRUTH_PATH, input_dataset, input_dataset + '.json'), extracted)
-
-
-def extract(models, datasets, truth, skip_existing, parallelism):
+def extract(models, datasets, skip_existing, parallelism):
     """
-    Extract datasets with the selected extraction models or the ground truth.
+    Extract datasets with the selected extraction models.
 
     :param models: list of extraction model names (if ``ground_truth == False``)
     :param datasets: list of dataset names under "datasets/raw"
-    :param truth: whether to run models or extract the ground truth
     :param skip_existing: skip models for which an answer file exists already
     :param parallelism: number of parallel workers
     """
-    if truth:
-        for ds in datasets:
-            _extract_ground_truth(ds)
-        return
 
     if ('web2text' in models or 'boilernet' in models) and parallelism > 1:
         click.echo('WARNING: Deep neural models should be run separately and with --parallelism=1', err=True)

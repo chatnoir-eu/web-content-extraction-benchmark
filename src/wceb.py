@@ -30,6 +30,7 @@ def main():
 main.add_command(complexity)
 main.add_command(eval)
 main.add_command(extract)
+main.add_command(convert)
 
 
 if __name__ == '__main__':

@@ -19,17 +19,16 @@ import click
 from extraction_benchmark.globals import *
 
 
-@click.command()
+@click.group()
 @click.pass_context
 @click.argument('model', type=click.Choice(['all', *MODELS]), required=True, nargs=-1)
 @click.option('--run-ensembles', is_flag=True, help='Run all ensembles')
 @click.option('-e', '--exclude-model', type=click.Choice(MODELS), default=[], multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
-@click.option('-t', '--truth', is_flag=True, help='Extract ground truth')
 @click.option('-s', '--skip-existing', is_flag=True, help='Load existing answer and extract only new')
 @click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
-def extract(ctx, model, run_ensembles, exclude_model, dataset, exclude_dataset, truth, skip_existing, parallelism):
+def extract(ctx, model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_existing, parallelism):
     """
     Run main content extractors on the datasets.
     """
@@ -52,7 +51,52 @@ def extract(ctx, model, run_ensembles, exclude_model, dataset, exclude_dataset, 
 
     from extraction_benchmark import extract
     try:
-        extract.extract(model, dataset, truth, skip_existing, parallelism)
+        extract.extract(model, dataset, skip_existing, parallelism)
+    except FileNotFoundError as e:
+        click.FileError(e.filename,
+                        'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
+                        'under the current working directory.')
+
+
+@click.group()
+def convert():
+    """
+    Convert raw datasets to JSON format.
+    """
+
+
+@convert.command()
+@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
+@click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
+def convert_truth(dataset, exclude_dataset):
+    """
+    Convert raw ground truth to JSON format.
+    """
+    if 'all' in dataset:
+        dataset = [d for d in DATASETS if d not in exclude_dataset]
+
+    from extraction_benchmark import extract
+    try:
+        extract.extract_ground_truth(dataset)
+    except FileNotFoundError as e:
+        click.FileError(e.filename,
+                        'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
+                        'under the current working directory.')
+
+
+@convert.command()
+@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
+@click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
+def convert_html(dataset, exclude_dataset):
+    """
+    Convert raw HTML pages to JSON format.
+    """
+    if 'all' in dataset:
+        dataset = [d for d in DATASETS if d not in exclude_dataset]
+
+    from extraction_benchmark import extract
+    try:
+        extract.extract_raw_html(dataset)
     except FileNotFoundError as e:
         click.FileError(e.filename,
                         'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '

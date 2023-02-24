@@ -23,20 +23,23 @@ from resiliparse.parse.html import HTMLTree, NodeType
 from extraction_benchmark.paths import *
 
 
+def _hash(data):
+    m = hashlib.sha256()
+    m.update(data)
+    return m.hexdigest()
+
+
 def _file_hash(file):
     with open(file, 'rb') as f:
-        m = hashlib.sha256()
-        m.update(f.read())
-        return m.hexdigest()
+        return _hash(f.read())
 
 
-def _extract_dict(source_dataset, source_case, article_body, url=None):
-    d = dict(
-        articleBody=article_body,
-        source=[source_dataset, source_case] if source_case else [source_dataset]
-    )
-    if url:
-        d['url'] = url
+def _extract_dict(source_dataset, source_case, content, is_truth=False, **kwargs):
+    d = {
+        ('plaintext' if is_truth else 'html'): content,
+        **{k: v for k, v in kwargs.items() if v},
+        'source': [source_dataset, source_case] if source_case else [source_dataset]
+    }
     return d
 
 
@@ -61,6 +64,8 @@ def read_cleaneval(ground_truth=False, portal=False):
 
     read_path = dataset_path_truth if ground_truth else dataset_path
 
+    text_tag_re = re.compile(r'(?:^<text [^>]+>\s*|\s*</text>$)', flags=re.MULTILINE)
+
     for file in os.listdir(read_path):
         abs_path = os.path.join(read_path, file)
         content = _read_file(abs_path)
@@ -75,8 +80,10 @@ def read_cleaneval(ground_truth=False, portal=False):
 
         if ground_truth:
             abs_path = os.path.join(dataset_path, os.path.splitext(file)[0] + '.html')
+        else:
+            content = text_tag_re.sub('', content)
         source = os.path.splitext(file)[0]
-        yield _file_hash(abs_path), _extract_dict('cleaneval', source, content, url)
+        yield _file_hash(abs_path), _extract_dict('cleaneval', source, content, is_truth=ground_truth, url=url)
 
 
 def read_cleanportaleval(ground_truth=False):
@@ -95,7 +102,7 @@ def read_dragnet(ground_truth=False):
             file = os.path.splitext(os.path.splitext(file)[0])[0]
             abs_path = os.path.join(dataset_path, file)
         source = os.path.splitext(file)[0]
-        yield _file_hash(abs_path), _extract_dict('dragnet', source, content)
+        yield _file_hash(abs_path), _extract_dict('dragnet', source, content, is_truth=ground_truth)
 
 
 def read_cetd(ground_truth=False):
@@ -109,7 +116,7 @@ def read_cetd(ground_truth=False):
             if ground_truth:
                 abs_path = os.path.join(dataset_path, vertical, 'original', os.path.splitext(file)[0] + '.htm')
             source = vertical + '_' + os.path.splitext(file)[0]
-            yield _file_hash(abs_path), _extract_dict('cetd', source, content)
+            yield _file_hash(abs_path), _extract_dict('cetd', source, content, is_truth=ground_truth)
 
 
 def read_readability(ground_truth=False):
@@ -121,7 +128,7 @@ def read_readability(ground_truth=False):
         if ground_truth:
             content = HTMLTree.parse(content).body.text
             abs_path = os.path.join(dataset_path, os.path.join(case_dir, 'source.html'))
-        yield _file_hash(abs_path), _extract_dict('readability', case_dir, content)
+        yield _file_hash(abs_path), _extract_dict('readability', case_dir, content, is_truth=ground_truth)
 
 
 def read_scrapinghub_benchmark(ground_truth=False):
@@ -130,14 +137,16 @@ def read_scrapinghub_benchmark(ground_truth=False):
     if ground_truth:
         truth_json = json.load(open(os.path.join(dataset_path, 'ground-truth.json'), 'r'))
         for k, v in truth_json.items():
-            yield k, _extract_dict('scrapinghub', None, v['articleBody'], v['url'])
+            yield k, _extract_dict('scrapinghub', None, v['articleBody'], is_truth=ground_truth, url=v['url'])
         return
 
     dataset_path = os.path.join(dataset_path, 'html')
     for file in os.listdir(dataset_path):
         abs_path = os.path.join(dataset_path, file)
         hash_id = os.path.splitext(os.path.splitext(file)[0])[0]
-        yield hash_id, _extract_dict('scrapinghub', None, _read_file(abs_path))
+        with gzip.GzipFile(abs_path, 'r') as f:
+            file_hash = _hash(f.read())
+        yield file_hash, _extract_dict('scrapinghub', hash_id, _read_file(abs_path), is_truth=ground_truth)
 
 
 def _extract_with_css_selector(html, selector):
@@ -169,7 +178,7 @@ def read_l3s_gn1(ground_truth=False):
             abs_path = os.path.join(dataset_path, file)
             content = _extract_with_css_selector(content, '.x-nc-sel1, .x-nc-sel2, .x-nc-sel3')
         source = os.path.splitext(file)[0]
-        yield _file_hash(abs_path), _extract_dict('l3s-gn1', source, content)
+        yield _file_hash(abs_path), _extract_dict('l3s-gn1', source, content, is_truth=ground_truth)
 
 
 def read_google_trends_2017(ground_truth=False):
@@ -184,7 +193,7 @@ def read_google_trends_2017(ground_truth=False):
             abs_path = os.path.join(dataset_path, file)
             content = _extract_with_css_selector(content, '[__boilernet_label="1"]')
         source = os.path.splitext(file)[0]
-        yield _file_hash(abs_path), _extract_dict('google-trends-2017', source, content)
+        yield _file_hash(abs_path), _extract_dict('google-trends-2017', source, content, is_truth=ground_truth)
 
 
 def read_dataset(dataset, ground_truth):
