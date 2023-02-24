@@ -17,26 +17,11 @@ import re
 import subprocess
 from tempfile import TemporaryDirectory
 
-import boilerpipe.extract as boilerpipe
-from bs4 import BeautifulSoup
-from goose3 import Goose, configuration
-import inscriptis
-import justext
-import html_text
-import lxml
-from lxml.html.clean import Cleaner as LxmlCLeaner
-import newspaper
-import newsplease
-import trafilatura
-import readability
-from resiliparse.extract import html2text
-from resiliparse.parse.html import *
-
-from extraction_benchmark.extractors import boilernet, bte, ensemble, web2text
 from extraction_benchmark.paths import ROOT_PATH
 
 
 def extract_bs4(html, **_):
+    from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, 'html.parser')
     for e in soup(['script', 'style', 'noscript']):
         e.decompose()
@@ -44,12 +29,14 @@ def extract_bs4(html, **_):
 
 
 def extract_boilerpipe(html, **_):
+    import boilerpipe.extract as boilerpipe
     text = boilerpipe.Extractor(extractor='ArticleExtractor', html=html)
     text = text.getText()
     return str(text)
 
 
 def extract_xpath_text(html, **_):
+    import lxml.html
     root = lxml.html.fromstring(html)
     text = ' '.join(root.xpath('//body[1]//*[not(name()="script") and not(name()="style")]/text()'))
     text = re.sub(r'(\s+\n\s*)', '\n', text)
@@ -57,10 +44,12 @@ def extract_xpath_text(html, **_):
 
 
 def extract_news_please(html, **_):
+    import newsplease
     return newsplease.NewsPlease.from_html(html, url=None).maintext
 
 
 def extract_readability(html, **_):
+    import readability, html_text
     doc = readability.Document(html)
     text = html_text.extract_text(doc.summary(html_partial=True))
     return text
@@ -79,15 +68,19 @@ def extract_go_domdistiller(html, **_):
 
 
 def extract_inscriptis(html, **_):
+    import inscriptis
     text = inscriptis.get_text(html)
     return text
 
 
 def extract_html_text(html, **_):
+    import html_text
     return html_text.extract_text(html)
 
 
 def extract_resiliparse(html, **_):
+    from resiliparse.extract import html2text
+    from resiliparse.parse.html import HTMLTree
     return html2text.extract_plain_text(HTMLTree.parse(html),
                                         preserve_formatting=True,
                                         main_content=True,
@@ -98,14 +91,17 @@ def extract_resiliparse(html, **_):
 
 
 def extract_bte(html, **_):
+    from extraction_benchmark.extractors import bte
     return bte.html2text(html)
 
 
 def extract_trafilatura(html, **_):
+    import trafilatura
     return trafilatura.extract(html, include_comments=False)
 
 
 def extract_justext(html, **_):
+    import justext
     article = ' '.join(
         [p.text for p in justext.justext(html, justext.get_stoplist("English"), 50, 200, 0.1, 0.2, 0.2, 200, True)
          if not p.is_boilerplate])
@@ -113,6 +109,7 @@ def extract_justext(html, **_):
 
 
 def extract_goose3(html, **_):
+    from goose3 import Goose, configuration
     c = configuration.Configuration()
     c.http_timeout = 5
 
@@ -122,6 +119,9 @@ def extract_goose3(html, **_):
 
 
 def extract_lxml_cleaner(html, **_):
+    from bs4 import BeautifulSoup
+    from lxml.html.clean import Cleaner
+
     tag_blacklist = [
         # important
         'aside', 'embed', 'footer', 'form', 'head', 'iframe', 'menu', 'object', 'script',
@@ -135,7 +135,7 @@ def extract_lxml_cleaner(html, **_):
         'style', 'track', 'template', 'textarea', 'time', 'use',
     ]
 
-    cleaner = LxmlCLeaner(
+    cleaner = Cleaner(
         annoying_tags=False,  # True
         comments=True,
         embedded=False,  # True
@@ -156,14 +156,17 @@ def extract_lxml_cleaner(html, **_):
 
 
 def extract_boilernet(html, **_):
+    from extraction_benchmark.extractors import boilernet
     return boilernet.extract(html)
 
 
 def extract_web2text(html, **_):
+    from extraction_benchmark.extractors import web2text
     return web2text.extract(html)
 
 
 def extract_newspaper3k(html, **_):
+    import newspaper
     article = newspaper.Article('')
     article.set_html(html)
     article.parse()
@@ -191,16 +194,19 @@ def _get_ensemble_model_list(best_only=False, weighted=False):
 
 
 def extract_ensemble_majority(html, page_id):
+    from extraction_benchmark.extractors import ensemble
     models, weights = _get_ensemble_model_list()
     return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .75))
 
 
 def extract_ensemble_best(html, page_id):
+    from extraction_benchmark.extractors import ensemble
     models, weights = _get_ensemble_model_list(best_only=True)
     return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .75))
 
 
 def extract_ensemble_weighted(html, page_id):
+    from extraction_benchmark.extractors import ensemble
     models, weights = _get_ensemble_model_list(best_only=True, weighted=True)
     return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .75))
 

@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+
+exec python3 $(realpath "$(dirname $0)/src/main.py") $@

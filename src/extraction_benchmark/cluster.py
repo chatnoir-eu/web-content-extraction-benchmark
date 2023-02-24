@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from collections import defaultdict
 from multiprocessing import Pool
 import re
@@ -28,6 +27,7 @@ from tqdm import tqdm
 from resiliparse.parse.html import HTMLTree
 
 from extraction_benchmark.dataset_readers import read_dataset
+from extraction_benchmark.extract import DATASETS
 from extraction_benchmark.paths import *
 
 
@@ -97,21 +97,17 @@ def get_kmeans_labels(X, n_clusters):
     return KMeans(n_clusters=n_clusters, max_iter=500, n_init=30).fit(X).labels_
 
 
-DATASETS = sorted(d for d in os.listdir(DATASET_TRUTH_PATH)
-                  if os.path.isdir(os.path.join(DATASET_TRUTH_PATH, d)))
-
-
 @click.group()
-def main():
+def cluster():
     pass
 
 
-@main.command()
+@cluster.command()
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
 def extract_features(dataset, parallelism):
     if 'all' in dataset:
-        dataset = DATASETS
+        dataset = DATASETS.keys()
 
     with Pool(processes=parallelism) as pool:
         for _ in tqdm(pool.imap_unordered(calculate_dataset_features, dataset),
@@ -119,12 +115,12 @@ def extract_features(dataset, parallelism):
             pass
 
 
-@main.command()
+@cluster.command()
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-r', '--reduce-dim', type=int,
               help='Reduce dimensionality before clustering (0 for no reduction)')
 @click.option('-c', '--clusters', type=int, default=2, help='Number of clusters')
-def cluster(dataset, reduce_dim, clusters):
+def kmeans(dataset, reduce_dim, clusters):
     if 'all' in dataset:
         dataset = DATASETS
 
@@ -168,10 +164,10 @@ def cluster(dataset, reduce_dim, clusters):
     click.echo(f'Clustering written to "{DATASET_TRUTH_PATH}"')
 
 
-@main.command()
+@cluster.command()
 @click.option('-q', '--quantile', type=click.Choice(['0.25', '0.33', '0.5', '0.66', '0.75']), default='0.33',
               help='Quantile boundary')
-def visualize_clusters(quantile):
+def visualize(quantile):
     # Map complexity scores to quantiles
     quantiles = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, 'complexity_quantiles.csv'), index_col=0)
 
@@ -214,8 +210,3 @@ def visualize_clusters(quantile):
     plt.savefig(os.path.join(DATASET_TRUTH_PATH, f'complexity_clusters_2d.pdf'))
 
     click.echo(f'Plots written to "{DATASET_TRUTH_PATH}')
-
-
-@click.command()
-def cluster():
-    pass

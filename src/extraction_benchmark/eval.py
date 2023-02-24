@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import glob
 import json
 from Levenshtein import ratio as levenshtein_ratio
 from multiprocessing import get_context
@@ -25,11 +24,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 
+from extraction_benchmark.extract import DATASETS
+from extraction_benchmark.extractors import list_extractors
 from extraction_benchmark.paths import *
 
-MODELS = sorted(set([os.path.basename(d) for d in glob.glob(os.path.join(MODEL_OUTPUTS_PATH, '*', '*'))]))
-DATASETS = sorted(set(os.listdir(DATASET_TRUTH_PATH)) & set(os.listdir(MODEL_OUTPUTS_PATH)))
-
+MODELS = list_extractors()
 
 SCORES = [
     'rouge',

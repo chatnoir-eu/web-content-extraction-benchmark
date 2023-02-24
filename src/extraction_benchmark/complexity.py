@@ -25,7 +25,7 @@ from extraction_benchmark.paths import *
 from extraction_benchmark.extract import DATASETS
 
 
-@click.command()
+@click.group()
 def complexity():
     pass
 
