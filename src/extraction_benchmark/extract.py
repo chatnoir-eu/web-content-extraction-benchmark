@@ -18,28 +18,13 @@ from itertools import product
 import json
 from multiprocessing import get_context
 from threading import Thread
+import warnings
 
 import click
-from tqdm import tqdm
 
 from extraction_benchmark import extractors
 from extraction_benchmark.dataset_readers import read_dataset
-from extraction_benchmark.extractors import list_extractors
 from extraction_benchmark.paths import *
-
-
-DATASETS = {
-    'cetd': 'CETD',
-    'cleaneval': 'CleanEval',
-    'cleanportaleval': 'CleanPortalEval',
-    'dragnet': 'Dragnet',
-    'google-trends-2017': 'Google-Trends',
-    'l3s-gn1': 'L3S-GN1',
-    'readability': 'Readability',
-    'scrapinghub': 'ScrapingHub'
-}
-
-MODELS = list_extractors(include_ensembles=True)
 
 
 def _dump_json(filepath, extracted):
@@ -60,31 +45,34 @@ def _extract_with_model(model, dataset, skip_existing=False):
     if skip_existing and os.path.isfile(out_path):
         extracted = json.load(open(out_path, 'r'))
 
-    for file_hash, data in read_dataset(dataset, False):
-        if file_hash in extracted:
-            continue
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
 
-        text = data['articleBody']
-        data['articleBody'] = ''
+        for file_hash, data in read_dataset(dataset, False):
+            if file_hash in extracted:
+                continue
 
-        def _model_wrapper():
-            try:
-                data['articleBody'] = model(text, page_id=file_hash) or ''
-            except:
-                pass
+            text = data['articleBody']
+            data['articleBody'] = ''
 
-        if model.__name__.startswith('extract_ensemble_'):
-            # Threading not needed for ensemble and only creates problems
-            _model_wrapper()
-        else:
-            t = Thread(target=_model_wrapper)
-            t.start()
-            t.join(timeout=30)
-            if t.is_alive():
-                # Kill hanging thread
-                ctypes.pythonapi.PyThreadState_SetAsyncExc(t.ident, ctypes.py_object(Exception))
+            def _model_wrapper():
+                try:
+                    data['articleBody'] = model(text, page_id=file_hash) or ''
+                except Exception as e:
+                    click.echo(f'Error in model {model_name}: {str(e)}', err=True)
 
-        extracted[file_hash] = {**data, 'model': model_name}
+            if model.__name__.startswith('extract_ensemble_'):
+                # Threading not needed for ensemble and only creates problems
+                _model_wrapper()
+            else:
+                t = Thread(target=_model_wrapper)
+                t.start()
+                t.join(timeout=30)
+                if t.is_alive():
+                    # Kill hanging thread
+                    ctypes.pythonapi.PyThreadState_SetAsyncExc(t.ident, ctypes.py_object(Exception))
+
+            extracted[file_hash] = {**data, 'model': model_name}
 
     if not extracted:
         return
@@ -93,54 +81,44 @@ def _extract_with_model(model, dataset, skip_existing=False):
 
 
 def _extract_ground_truth(input_dataset):
-    ds = tqdm(read_dataset(input_dataset, True), desc='Extracting truth of ' + input_dataset, leave=False)
-    extracted = {k: v for k, v in ds}
+    with click.progressbar(read_dataset(input_dataset, True), label=f'Extracting truth of {input_dataset}') as ds:
+        extracted = {k: v for k, v in ds}
     _dump_json(os.path.join(DATASET_TRUTH_PATH, input_dataset, input_dataset + '.json'), extracted)
 
 
-@click.group()
-def extract():
-    pass
+def extract(models, datasets, truth, skip_existing, parallelism):
+    """
+    Extract datasets with the selected extraction models or the ground truth.
 
-
-@extract.command()
-@click.option('-m', '--model', type=click.Choice(['all', *MODELS]), default=[], multiple=True)
-@click.option('--run-ensembles',is_flag=True, help='Run all ensembles')
-@click.option('-e', '--exclude-model', type=click.Choice(MODELS), default=[], multiple=True)
-@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-@click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
-@click.option('-t', '--truth', is_flag=True, help='Extract ground truth')
-@click.option('-s', '--skip-existing', is_flag=True, help='Load existing answer and extract only new')
-@click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
-def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, truth, skip_existing, parallelism):
-    if 'all' in model:
-        model = [m for m in MODELS if m not in exclude_model and not m.startswith('ensemble_')]
-    if run_ensembles:
-        model = [m for m in MODELS if m.startswith('ensemble_')]
-    if 'all' in dataset:
-        dataset = [d for d in DATASETS if d not in exclude_dataset]
-
+    :param models: list of extraction model names (if ``ground_truth == False``)
+    :param datasets: list of dataset names under "datasets/raw"
+    :param truth: whether to run models or extract the ground truth
+    :param skip_existing: skip models for which an answer file exists already
+    :param parallelism: number of parallel workers
+    """
     if truth:
-        for ds in dataset:
+        for ds in datasets:
             _extract_ground_truth(ds)
         return
 
-    if ('web2text' in model or 'boilernet' in model) and parallelism > 1:
+    if ('web2text' in models or 'boilernet' in models) and parallelism > 1:
         click.echo('WARNING: Deep neural models should be run separately and with --parallelism=1', err=True)
 
-    model = [(getattr(extractors, 'extract_' + m), m) for m in model]
-    jobs = list(product(model, dataset))
+    model = [(getattr(extractors, 'extract_' + m), m) for m in models]
+    jobs = list(product(model, datasets))
 
     if parallelism == 1:
-        for job in tqdm(jobs, desc='Running extrators'):
-            _extract_with_model_expand_args(job)
+        with click.progressbar(jobs, label='Running extrators') as progress:
+            for job in progress:
+                _extract_with_model_expand_args(job)
         return
 
     with get_context('spawn').Pool(processes=parallelism) as pool:
         try:
-            for _ in tqdm(pool.imap_unordered(partial(_extract_with_model_expand_args,
-                                                      skip_existing=skip_existing), jobs),
-                          total=len(jobs), desc='Running extrators'):
-                pass
+            with click.progressbar(pool.imap_unordered(partial(_extract_with_model_expand_args,
+                                                               skip_existing=skip_existing), jobs),
+                                   length=len(jobs), label='Running extrators') as progress:
+                for _ in progress:
+                    pass
         except KeyboardInterrupt:
             pool.terminate()

@@ -12,65 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os.path
+from collections import defaultdict
+from multiprocessing import Pool
 import re
 
 import click
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 from resiliparse.parse.html import HTMLTree
-from tqdm import tqdm
 
 from extraction_benchmark.extract import read_dataset
-from extraction_benchmark.paths import *
-from extraction_benchmark.extract import DATASETS
+from extraction_benchmark.globals import *
 
-
-@click.group()
-def complexity():
-    pass
-
-
-_COMPLEXITY_METRICS_PATH = os.path.join(METRICS_PATH, 'complexity')
 _TOKEN_RE = re.compile(r'\w+', flags=re.UNICODE)
+_WS_RE = re.compile(r'\s+', flags=re.UNICODE | re.MULTILINE)
 
 
 def _tokenize(text):
     return _TOKEN_RE.findall(text)
 
 
-@complexity.command()
-@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-def calculate(dataset):
-    if 'all' in dataset:
-        dataset = list(DATASETS.keys())
+def calculate(datasets):
+    """
+    Calculcate page complexities for pages in the given datasets based on the ground truth.
 
-    if not dataset:
-        return
-
+    :param datasets: list of dataset names
+    """
     complexity_total = pd.DataFrame(columns=['complexity'])
     complexity_total.index.name = 'hash_key'
     quantile_labels = [0.25, 0.33, 0.5, 0.66, 0.75]
 
-    os.makedirs(_COMPLEXITY_METRICS_PATH, exist_ok=True)
+    os.makedirs(METRICS_COMPLEXITY_PATH, exist_ok=True)
 
-    for ds in tqdm(dataset, desc='Iterating datasets', leave=False):
-        tokens_truth = {}
-        tokens_src = {}
-        for h, truth in tqdm(read_dataset(ds, True), desc=f'Reading truth files ({ds})', leave=False):
-            tokens_truth[h] = len(_tokenize(truth['articleBody']))
-        for h, src in tqdm(read_dataset(ds, False), desc=f'Reading source files ({ds})', leave=False):
-            if h not in tokens_truth:
-                continue
-            # Extract all text tokens except script / style
-            tree = HTMLTree.parse(src['articleBody'])
-            for e in tree.body.query_selector_all('script, style'):
-                e.decompose()
-            tokens_src[h] = len(_tokenize(tree.body.text))
+    with click.progressbar(datasets, label='Iterating datasets') as ds_progress:
+        for ds in ds_progress:
+            tokens_truth = {}
+            tokens_src = {}
+            for h, truth in read_dataset(ds, True):
+                tokens_truth[h] = len(_tokenize(truth['articleBody']))
+            for h, src in read_dataset(ds, False):
+                if h not in tokens_truth:
+                    continue
+                # Extract all text tokens except script / style
+                tree = HTMLTree.parse(src['articleBody'])
+                for e in tree.body.query_selector_all('script, style'):
+                    e.decompose()
+                tokens_src[h] = len(_tokenize(tree.body.text))
 
         tokens_truth = pd.DataFrame.from_dict(tokens_truth, orient='index')
         tokens_src = pd.DataFrame.from_dict(tokens_src, orient='index')
 
-        out_path_ds = os.path.join(_COMPLEXITY_METRICS_PATH, ds)
+        out_path_ds = os.path.join(METRICS_COMPLEXITY_PATH, ds)
         os.makedirs(out_path_ds, exist_ok=True)
 
         complexity = 1 - (tokens_truth / tokens_src).clip(lower=0, upper=1)
@@ -87,33 +85,200 @@ def calculate(dataset):
     complexity_total.reset_index(inplace=True)
     complexity_total.set_index(['hash_key', 'dataset'], inplace=True)
     quantiles = complexity_total.quantile(quantile_labels)
-    quantiles.to_csv(os.path.join(_COMPLEXITY_METRICS_PATH, f'complexity_quantiles.csv'))
-    complexity_total.to_csv(os.path.join(_COMPLEXITY_METRICS_PATH, f'complexity.csv'))
+    quantiles.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity_quantiles.csv'))
+    complexity_total.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity.csv'))
 
-    click.echo(f'Complexity scores written to "{_COMPLEXITY_METRICS_PATH}".')
+    click.echo(f'Complexity scores written to "{METRICS_COMPLEXITY_PATH}".')
 
 
-@complexity.command()
-@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-def visualize(dataset):
-    if 'all' in dataset:
-        dataset = list(DATASETS.keys())
+def extract_html_features(html):
+    tree = HTMLTree.parse(html)
+    for e in tree.body.query_selector_all('script, style, noscript'):
+        e.decompose()
+    text = _WS_RE.sub(' ', tree.body.text)
 
+    features = defaultdict(float)
+
+    all_tags = tree.body.query_selector_all('*')
+
+    n_tags = len(all_tags)
+    if n_tags != 0:
+        features['h1'] = len(tree.body.query_selector_all('h1')) / n_tags
+        features['h2'] = len(tree.body.query_selector_all('h2')) / n_tags
+        features['h3'] = len(tree.body.query_selector_all('h3')) / n_tags
+        features['h4'] = len(tree.body.query_selector_all('h4')) / n_tags
+        features['h5'] = len(tree.body.query_selector_all('h5')) / n_tags
+        features['h6'] = len(tree.body.query_selector_all('h6')) / n_tags
+        features['p'] = len(tree.body.query_selector_all('p')) / n_tags
+        features['ul'] = len(tree.body.query_selector_all('li')) / n_tags
+        features['table'] = len(tree.body.query_selector_all('table')) / n_tags
+        features['a'] = len(tree.body.query_selector_all('a')) / n_tags
+        features['div'] = len(tree.body.query_selector_all('div')) / n_tags
+        features['br'] = len(tree.body.query_selector_all('br')) / n_tags
+        features['strong'] = len(tree.body.query_selector_all('strong')) / n_tags
+        features['em'] = len(tree.body.query_selector_all('em')) / n_tags
+
+    features['html_to_non_html'] = n_tags / len(_TOKEN_RE.findall(text))
+
+    return features
+
+
+def calculate_dataset_features(dataset):
+    df = pd.DataFrame()
+    df.index.name = 'hash_key'
+    for hash_key, data in read_dataset(dataset, False):
+        features = extract_html_features(data['articleBody'])
+        s = pd.Series(features, name=hash_key)
+        df = df.append(s)
+    df.to_csv(os.path.join(DATASET_TRUTH_PATH, dataset, f'{dataset}_html_features.csv'))
+    return ''
+
+
+def tsne_reduce_dim(X, n_components):
+    return TSNE(n_components=n_components,
+                learning_rate='auto',
+                init='random',
+                perplexity=30,
+                method='barnes_hut',
+                n_jobs=-1,
+                verbose=1).fit_transform(X)
+
+
+def pca_reduce_dim(X, n_components):
+    return PCA(n_components=n_components).fit_transform(X)
+
+
+def get_kmeans_labels(X, n_clusters):
+    # noinspection PyProtectedMember,PyUnresolvedReferences
+    return KMeans(n_clusters=n_clusters, max_iter=500, n_init=30).fit(X).labels_
+
+
+def extract_page_features(dataset, parallelism):
+    with Pool(processes=parallelism) as pool:
+        with click.progressbar(pool.imap_unordered(calculate_dataset_features, dataset),
+                               length=len(dataset), label='Extracting dataset features') as progress:
+            for _ in progress:
+                pass
+
+
+# noinspection DuplicatedCode
+def kmeans_cluster(dataset, reduce_dim, n_clusters):
+    df_features = pd.DataFrame()
+    df_complexity = pd.DataFrame()
+    with click.progressbar(dataset, label='Loading datasets') as progress:
+        for ds in progress:
+            df_tmp = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}_html_features.csv'))
+            df_tmp['dataset'] = ds
+            df_features = df_features.append(df_tmp, ignore_index=True)
+
+            df_tmp = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}_complexity.csv'))
+            df_tmp['dataset'] = ds
+            df_complexity = df_complexity.append(df_tmp, ignore_index=True)
+
+    df_features.set_index(['hash_key', 'dataset'], inplace=True)
+    df_complexity.set_index(['hash_key', 'dataset'], inplace=True)
+
+    df_features = df_features.join(df_complexity, how='inner')
+
+    scaler = StandardScaler()
+    X = scaler.fit_transform(df_features.drop(columns='complexity'))
+
+    if reduce_dim:
+        X = pca_reduce_dim(X, reduce_dim)
+
+    click.echo('Clustering datapoints...')
+    labels = get_kmeans_labels(X, n_clusters)
+    # Ensure cluster labels are aligned with quantiles
+    if sum(labels[labels == 1]) < len(labels[labels == 0]):
+        labels = 1 - labels
+    df_features['kmeans_label'] = labels
+    df_features.to_csv(os.path.join(DATASET_TRUTH_PATH, 'kmeans_labels.csv'))
+
+    click.echo('Reducing dimensionality to 2D for visualization...')
+    X = tsne_reduce_dim(X, 2)
+    df_2d = pd.DataFrame(X, columns=['x', 'y'], index=df_features.index)
+    df_2d['kmeans_label'] = df_features['kmeans_label']
+    df_2d['complexity'] = df_features['complexity']
+
+    df_2d.to_csv(os.path.join(DATASET_TRUTH_PATH, 'complexity_clusters_2d.csv'))
+    click.echo(f'Clustering written to "{DATASET_TRUTH_PATH}"')
+
+
+def visualize_clusters(quantile):
+    """
+    Visualize clusters of HTML page features.
+
+    :param quantile: complexity quantile to align with cluster boundaries
+    """
+
+    p = os.path.join(DATASET_TRUTH_PATH, 'complexity_quantiles.csv')
+    if not os.path.isfile(p):
+        raise click.FileError(p, 'Please calculate page complexities first.')
+    quantiles = pd.read_csv(p, index_col=0)
+
+    def binarize_complexity(x):
+        x['complexity'] = int(x['complexity'] >= quantiles.loc[float(quantile)]['complexity'])
+        return x
+
+    in_path = os.path.join(DATASET_TRUTH_PATH, 'complexity_clusters_2d.csv')
+    if not os.path.isfile(in_path):
+        raise click.FileError(p, 'Please calculate page complexities first.')
+
+    df_2d = pd.read_csv(in_path, index_col='hash_key')
+    df_2d = df_2d.apply(binarize_complexity, axis='columns')
+
+    def sub_plt(ax, label_col, title, labels):
+
+        for i, l in enumerate(labels):
+            filtered = df_2d[df_2d[label_col] == i]
+            ax.scatter(
+                x=filtered['x'],
+                y=filtered['y'],
+                s=5,
+                alpha=0.5,
+                label=l
+            )
+        leg = ax.legend(loc='lower right', fontsize='small', borderpad=0.4, shadow=False)
+        leg.get_frame().set_linewidth(0.0)
+        ax.set_title(title, fontsize='medium')
+        ax.spines['top'].set_visible(False)
+        ax.set_xticks(ticks=np.linspace(*ax.get_xlim(), 5), labels=[])
+        ax.set_yticks(ticks=np.linspace(*ax.get_ylim(), 5), labels=[])
+        ax.spines['right'].set_visible(False)
+
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.5), dpi=200)
+    sub_plt(ax1, 'kmeans_label', '$k$-Means Clustering', ['Cluster 0', 'Cluster 1'])
+    sub_plt(ax2, 'complexity', 'Complexity Quantiles', ['Low', 'High'])
+
+    plt.tight_layout(pad=0.5)
+    plt.savefig(os.path.join(DATASET_TRUTH_PATH, f'complexity_clusters_2d.png'))
+    plt.savefig(os.path.join(DATASET_TRUTH_PATH, f'complexity_clusters_2d.pdf'))
+
+    click.echo(f'Plots written to "{DATASET_TRUTH_PATH}')
+
+
+def visualize_datasets(datasets):
+    """
+    Visualize median complexity of the datasets.
+
+    :param datasets: list of dataset names
+    """
     complexities = []
-    for ds in tqdm(dataset, desc='Iterating datasets', leave=False):
-        path = os.path.join(_COMPLEXITY_METRICS_PATH, ds, f'{ds}_complexity.csv')
-        if not os.path.isfile(path):
-            continue
-        complexities.append(pd.read_csv(path)['complexity'])
+    with click.progressbar(datasets, label='Iterating datasets') as progress:
+        for ds in progress:
+            path = os.path.join(METRICS_COMPLEXITY_PATH, ds, f'{ds}_complexity.csv')
+            if not os.path.isfile(path):
+                continue
+            complexities.append(pd.read_csv(path)['complexity'])
 
     # Sort by median
-    complexities, dataset = zip(*sorted(zip(complexities, dataset), key=lambda x: x[0].median(), reverse=True))
+    complexities, datasets = zip(*sorted(zip(complexities, datasets), key=lambda x: x[0].median(), reverse=True))
 
     plt.figure(figsize=(5, 3), dpi=200)
     plt.boxplot(
         complexities,
         positions=range(len(complexities)),
-        labels=[DATASETS[d] for d in dataset],
+        labels=[DATASETS[d] for d in datasets],
     )
 
     plt.ylabel('Page Complexity')
@@ -125,19 +290,19 @@ def visualize(dataset):
         plt.axhline(y, linewidth=0.25, color='lightgrey', zorder=-1)
 
     plt.tight_layout()
-    plt.savefig(os.path.join(_COMPLEXITY_METRICS_PATH, f'complexity.png'))
-    plt.savefig(os.path.join(_COMPLEXITY_METRICS_PATH, f'complexity.pdf'))
+    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity.png'))
+    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity.pdf'))
 
-    complexity_quantiles = pd.read_csv(os.path.join(_COMPLEXITY_METRICS_PATH, 'complexity_quantiles.csv'), index_col=0)
+    complexity_quantiles = pd.read_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_quantiles.csv'), index_col=0)
     quantile_threshold = complexity_quantiles.loc[0.33]['complexity']
 
     # Sort back into alphabetical order
-    complexities, dataset = zip(*sorted(zip(complexities, dataset), key=lambda x: x[1]))
+    complexities, datasets = zip(*sorted(zip(complexities, datasets), key=lambda x: x[1]))
 
     click.echo('Dataset stats:')
     click.echo('--------------')
     for i, compl in enumerate(complexities):
-        click.echo(f'{dataset[i]:<20} ', nl=False)
+        click.echo(f'{datasets[i]:<20} ', nl=False)
         click.echo(f'pages: {compl.count():<10} ', nl=False)
         click.echo(f'pages low: {compl[compl < quantile_threshold].count():<10} ', nl=False)
         click.echo(f'pages high: {compl[compl >= quantile_threshold].count():<10} ', nl=False)
@@ -145,4 +310,4 @@ def visualize(dataset):
         click.echo()
     click.echo()
 
-    click.echo(f'Complexity plots written to "{_COMPLEXITY_METRICS_PATH}".')
+    click.echo(f'Complexity plots written to "{METRICS_COMPLEXITY_PATH}".')

@@ -24,44 +24,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 
-from extraction_benchmark.extract import DATASETS
-from extraction_benchmark.extractors import list_extractors
-from extraction_benchmark.paths import *
-
-MODELS = list_extractors()
-
-SCORES = [
-    'rouge',
-    'levenshtein'
-]
-
-COMPLEXITIES = [
-    'low',
-    'medium',
-    'high'
-]
-
-MODEL_NAME_MAP = dict(
-    ensemble_best='(Best only)',
-    ensemble_weighted='(Best weigh.)',
-    ensemble_majority='(Majority all)',
-
-    bs4='BS4',
-    boilernet='BoilerNet',
-    boilerpipe='Boilerpipe',
-    bte='BTE',
-    go_domdistiller='DOM Distiller',
-    goose3='Goose3',
-    justext='jusText',
-    lxml_cleaner='lxml Cleaner',
-    news_please='news-please',
-    newspaper3k='Newspaper3k',
-    readability='Readability',
-    resiliparse='Resiliparse',
-    trafilatura='Trafilatura',
-    web2text='Web2Text',
-    xpath_text='XPath Text',
-)
+from extraction_benchmark.globals import *
 
 _TOKEN_RE = re.compile(r'\s+', flags=re.UNICODE | re.MULTILINE)
 
@@ -142,39 +105,25 @@ def _eval_expand_args(args):
     df.to_csv(os.path.join(store_path, f'{scorer}_{model}.csv'), index=False)
 
 
-METRICS = ['rouge', 'levenshtein']
+def calculcate_scores(metrics, datasets, models, parallelism):
+    """
+    Calculate performance scores for pages against the ground truth.
 
-
-@click.group()
-def eval():
-    pass
-
-
-@eval.command()
-@click.argument('metric', type=click.Choice(['all', *METRICS]))
-@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-@click.option('-m', '--model', type=click.Choice(['all', *MODELS]), default=[], multiple=True)
-@click.option('--eval-ensembles', is_flag=True)
-@click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
-def score(metric, dataset, model, eval_ensembles, parallelism):
-    if 'all' in dataset:
-        dataset = DATASETS
-    if 'all' in model:
-        model = MODELS
-    if eval_ensembles:
-        model = [m for m in MODELS if m.startswith('ensemble_')]
-    metric = METRICS if metric == 'all' else [metric]
-
+    :param metrics: list of performance scores to calculate (``"rouge"`` or ``"levenshtein"``)
+    :param datasets: list of dataset names
+    :param models: list of models to evaluate
+    :param parallelism: number of parallel workers to run
+    """
     jobs = []
-    for ds in tqdm(dataset, desc='Loading extractions', leave=False):
+    for ds in tqdm(datasets, desc='Loading extractions', leave=False):
         ground_truth_path = os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}.json')
         if not os.path.isfile(ground_truth_path):
             continue
 
-        for mod in model:
+        for mod in models:
             model_answer_path = os.path.join(MODEL_OUTPUTS_PATH, ds, mod, f'{mod}.json')
             if os.path.isfile(model_answer_path):
-                jobs.extend([met, mod, ds, model_answer_path, ground_truth_path] for met in metric)
+                jobs.extend([met, mod, ds, model_answer_path, ground_truth_path] for met in metrics)
 
     with get_context('spawn').Pool(processes=parallelism) as pool:
         for _ in tqdm(pool.imap_unordered(_eval_expand_args, jobs),
@@ -203,7 +152,7 @@ def _map_axis_tick_labels(axis):
         elif t.get_text() in ['bs4', 'html_text', 'inscriptis', 'lxml_cleaner', 'xpath_text']:
             t.set_color('gray')
 
-        t.set_text(MODEL_NAME_MAP.get(t.get_text(), t.get_text()))
+        t.set_text(MODELS.get(t.get_text(), t.get_text()))
 
     axis.set_ticks(range(len(ticklabels)))
     axis.set_ticklabels(ticklabels)
@@ -258,24 +207,20 @@ def _sort_vectors(*vals, reverse=True):
     return zip(*sorted(zip(*vals), key=lambda x: x[0], reverse=reverse))
 
 
-@eval.command()
-@click.argument('score', type=click.Choice(SCORES))
-@click.option('-m', '--model', type=click.Choice(['all', *MODELS]), default=['all'], multiple=True)
-@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-@click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
-@click.option('-c', '--complexity', type=click.Choice(['all', *COMPLEXITIES]), default=['all'],
-              required=True, multiple=True)
-def aggregate(score, model, dataset, exclude_dataset, complexity):
-    if 'all' in model:
-        model = MODELS
-    if 'all' in dataset:
-        dataset = [d for d in DATASETS if d not in exclude_dataset]
+def aggregate_scores(score_name, models, datasets, complexity):
+    """
+    Aggregate evaluation statistics.
 
-    score_in_path = os.path.join(METRICS_PATH, score)
+    :param score_name: score to aggregated (``"rouge"`` or ``"levenshtein"``)
+    :param models: list of input model names
+    :param datasets: list of input dataset names
+    :param complexity: list of complexity classes to include
+    """
+    score_in_path = os.path.join(METRICS_PATH, score_name)
     if not os.path.isdir(score_in_path):
         return
 
-    if score == 'rouge':
+    if score_name == 'rouge':
         score_cols = ['prec', 'rec', 'f1']
         main_score_col = 'f1'
     else:
@@ -283,8 +228,6 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
         main_score_col = 'dist'
 
     comp_quant_path = os.path.join(DATASET_TRUTH_PATH, 'complexity_quantiles.csv')
-    if not os.path.isfile(comp_quant_path):
-        raise click.UsageError('Please calculate complexity scores first.')
     q = pd.read_csv(comp_quant_path, index_col=0)
     compl_range = {'all': None}
     compl_range.update({k: v for k, v in zip(COMPLEXITIES, pairwise([0, float(q.loc[0.25]), float(q.loc[0.75]), 1]))})
@@ -293,19 +236,15 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
     barplot_data = []
     for comp in complexity:
         in_df = pd.DataFrame()
-        for d, m in tqdm(list(product(dataset, model)), desc=f'Loading score frames (complexity: {comp})'):
-            p = os.path.join(score_in_path, d, f'{score}_{m}.csv')
+        for d, m in tqdm(list(product(datasets, models)), desc=f'Loading score frames (complexity: {comp})'):
+            p = os.path.join(score_in_path, d, f'{score_name}_{m}.csv')
             if not os.path.isfile(p):
                 continue
 
             df = pd.read_csv(p, index_col=['model', 'dataset'])
             if compl_range[comp] is not None:
-                p = os.path.join(DATASET_TRUTH_PATH, d, f'{d}_complexity.csv')
-                if not os.path.isfile(p):
-                    raise click.UsageError(f'No complexities for dataset {d} found.')
-
                 # Filter input dataframe to include only pages within chosen complexity range
-                c = pd.read_csv(p, index_col='hash_key')
+                c = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, d, f'{d}_complexity.csv'), index_col='hash_key')
                 c = c[(c['complexity'] >= compl_range[comp][0]) & (c['complexity'] <= compl_range[comp][1])]
                 df = df[df['hash_key'].isin(c.index)]
 
@@ -366,7 +305,7 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
         f1, low, high, labels = _sort_vectors(model_f1_means, model_f1_lower_err, model_f1_upper_err, models)
         barplot_data.append([f1, low, high, labels, f'Complexity: {comp.capitalize()}'])
 
-        file_suffix = score
+        file_suffix = score_name
         if comp != 'all':
             file_suffix += f'_complexity_{comp}'
 
@@ -379,7 +318,7 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
 
         # Remap series to friendly names
         def _remap_series_names(s):
-            s.index = pd.Index(data=[MODEL_NAME_MAP.get(n, n) for n in s.index.values], name='Model')
+            s.index = pd.Index(data=[MODELS.get(n, n) for n in s.index.values], name='Model')
             return s
 
         out_styler = out_df.style.apply(_highlight_max_per_ds).format(precision=3)
@@ -390,7 +329,7 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
             out_df_reduced = out_df.loc[:, series, :].droplevel('dataset').sort_values(
                 f'mean_{main_score_col}', ascending=False)
             out_df_reduced.name = 'Model'
-            if score == 'rouge':
+            if score_name == 'rouge':
                 out_df_reduced.columns = ['Mean Precision', 'Mean Recall', 'Mean F1',
                                           'Median Precision', 'Median Recall', 'Median F1']
             else:
@@ -402,13 +341,13 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
             out_styler.to_excel(os.path.join(METRICS_PATH, f'{file_suffix}{series}.xlsx'), float_format='%.3f')
 
             # LaTeX
-            if score == 'rouge':
+            if score_name == 'rouge':
                 out_df_reduced.columns = ['Mean Precision', 'Mean Recall', 'Mean $F_1$',
                                           'Median Precision', 'Median Recall', 'Median $F_1$']
             out_styler = out_df_reduced.style.highlight_max(props=r'bf:').format(precision=3)
             out_styler.to_latex(os.path.join(METRICS_PATH, f'{file_suffix}{series}.tex'))
 
-    if score == 'rouge':
+    if score_name == 'rouge':
         title_box = 'ROUGE-LSum Median $F_1$ Page Scores'
         title_bar = 'ROUGE-LSum Mean $F_1$ Page Scores (Macro Average)'
     else:
@@ -420,13 +359,13 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
         boxplot_data,
         (len(boxplot_data), 1),
         title_box,
-        score)
+        score_name)
 
     _draw_performance_plot(
         'bar',
         barplot_data,
         (len(barplot_data), 1),
         title_bar,
-        score)
+        score_name)
 
     click.echo(f'Aggregation written to "{METRICS_PATH}"')

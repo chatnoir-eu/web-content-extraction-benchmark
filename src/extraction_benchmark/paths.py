@@ -14,7 +14,7 @@
 
 import os
 
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+ROOT_PATH = os.path.realpath(os.path.join(os.getcwd()))
 DATASET_PATH = os.path.join(ROOT_PATH, 'datasets')
 
 DATASET_RAW_PATH = os.path.join(DATASET_PATH, 'raw')
@@ -24,3 +24,4 @@ OUTPUTS_PATH = os.path.join(ROOT_PATH, 'outputs')
 MODEL_OUTPUTS_PATH = os.path.join(OUTPUTS_PATH, 'model-outputs')
 METRICS_PATH = os.path.join(OUTPUTS_PATH, 'metrics-computed')
 METRICS_AGG_PATH = os.path.join(METRICS_PATH, '_aggregated')
+METRICS_COMPLEXITY_PATH = os.path.join(METRICS_PATH, '_complexity')

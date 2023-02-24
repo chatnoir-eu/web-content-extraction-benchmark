@@ -13,11 +13,7 @@
 # limitations under the License.
 
 import click
-
-from extraction_benchmark.cluster import cluster
-from extraction_benchmark.complexity import complexity
-from extraction_benchmark.eval import eval
-from extraction_benchmark.extract import extract
+from extraction_benchmark.cli import *
 
 
 @click.group()
@@ -31,7 +27,6 @@ def main():
     pass
 
 
-main.add_command(cluster)
 main.add_command(complexity)
 main.add_command(eval)
 main.add_command(extract)

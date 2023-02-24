@@ -9,9 +9,6 @@ classification for digital libraries. In DELOS Workshop: Personalisation
 and Recommender System in Digital Libraries, 2001.
 
 Python implementation by Jan Pomikalek <xpomikal@fi.muni.cz>
-
-For usage information run
-$ bte.py --help
 """
 
 import re
@@ -185,22 +182,3 @@ def find_paragraphs(tokens, tag_h_l=False):
                 in_paragraph = False
 
     return result
-
-
-def usage():
-    return """Usage: bte.py [OPTIONS] [FILE]...
-Extract main body from an HTML documents and output it in plain text with
-(optional) simple mark-up.
-
-  -p            preserve paragraph mark-up (add <p> tags to output)
-  -l            preserve paragraph, header and list items mark-up (add <p>,
-                <h>, <l> tags to output)
-  -n            don't create backup if overwriting destination files
-  -v            verbose
-  -h, --help    output this help
-
-If no FILE(s) specified, input is read from stdin and output written to stdout.
-Otherwise, each of the input files is processed. Destination file name is the
-same as the input file with the extension replaced with .txt. If the destination
-file already exists, it is prepended with tilde (~) and backed up (unless
-running with -n option)."""
