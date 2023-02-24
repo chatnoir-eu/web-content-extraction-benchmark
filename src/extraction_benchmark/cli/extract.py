@@ -21,7 +21,7 @@ from extraction_benchmark.globals import *
 
 @click.command()
 @click.pass_context
-@click.argument('model', type=click.Choice(['all', *MODELS]), nargs=-1)
+@click.argument('model', type=click.Choice(['all', *MODELS]), required=True, nargs=-1)
 @click.option('--run-ensembles', is_flag=True, help='Run all ensembles')
 @click.option('-e', '--exclude-model', type=click.Choice(MODELS), default=[], multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)

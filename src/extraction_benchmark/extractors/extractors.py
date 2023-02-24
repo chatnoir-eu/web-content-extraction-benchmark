@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import re
-import subprocess
-from tempfile import TemporaryDirectory
-
-from extraction_benchmark.paths import ROOT_PATH
 
 
 def extract_bs4(html, **_):
@@ -56,15 +51,8 @@ def extract_readability(html, **_):
 
 
 def extract_go_domdistiller(html, **_):
-    cli_path = os.path.join(
-        ROOT_PATH, 'article-extraction-benchmark',  'extractors', 'go_domdistiller', 'go_domdistiller_cli')
-
-    with TemporaryDirectory() as tmp_dir:
-        p = os.path.join(tmp_dir, 'go_domdistiller.html')
-        with open(p, 'w') as f:
-            f.write(html)
-        result = subprocess.run([cli_path, p], stdout=subprocess.PIPE)
-    return result.stdout.decode()
+    from extraction_benchmark.extractors import go_domdistiller
+    return go_domdistiller.extract(html)
 
 
 def extract_inscriptis(html, **_):

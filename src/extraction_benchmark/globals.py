@@ -28,8 +28,11 @@ _DATASET_FRIENDLY_NAME_MAP = {
     'scrapinghub': 'ScrapingHub'
 }
 
-DATASETS = {k: _DATASET_FRIENDLY_NAME_MAP.get(k, k) for k in os.listdir(DATASET_RAW_PATH)
-            if os.path.isdir(os.path.join(DATASET_RAW_PATH, k))}
+if os.path.isdir(DATASET_RAW_PATH):
+    DATASETS = {k: _DATASET_FRIENDLY_NAME_MAP.get(k, k) for k in os.listdir(DATASET_RAW_PATH)
+                if os.path.isdir(os.path.join(DATASET_RAW_PATH, k))}
+else:
+    DATASETS = {}
 
 _MODEL_FRIENDLY_NAME_MAP = dict(
     ensemble_best='(Best only)',

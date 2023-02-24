@@ -22,8 +22,8 @@ import warnings
 
 import click
 
-from extraction_benchmark import extractors
 from extraction_benchmark.dataset_readers import read_dataset
+from extraction_benchmark.extractors import extractors
 from extraction_benchmark.paths import *
 
 
@@ -122,3 +122,5 @@ def extract(models, datasets, truth, skip_existing, parallelism):
                     pass
         except KeyboardInterrupt:
             pool.terminate()
+
+    click.echo(f'Model outputs written to {MODEL_OUTPUTS_PATH}')

@@ -17,6 +17,9 @@ license = "Apache-2.0"
 packages = [
     {include = "extraction_benchmark", from = "src"}
 ]
+include = [
+    "src/extractors/go_domdistiller/go_domdistiller_cli"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
