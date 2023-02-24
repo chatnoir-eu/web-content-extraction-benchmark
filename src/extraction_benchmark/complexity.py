@@ -65,21 +65,21 @@ def calculate(datasets):
                     e.decompose()
                 tokens_src[h] = len(_tokenize(tree.body.text))
 
-        tokens_truth = pd.DataFrame.from_dict(tokens_truth, orient='index')
-        tokens_src = pd.DataFrame.from_dict(tokens_src, orient='index')
+            tokens_truth = pd.DataFrame.from_dict(tokens_truth, orient='index')
+            tokens_src = pd.DataFrame.from_dict(tokens_src, orient='index')
 
-        out_path_ds = os.path.join(METRICS_COMPLEXITY_PATH, ds)
-        os.makedirs(out_path_ds, exist_ok=True)
+            out_path_ds = os.path.join(METRICS_COMPLEXITY_PATH, ds)
+            os.makedirs(out_path_ds, exist_ok=True)
 
-        complexity = 1 - (tokens_truth / tokens_src).clip(lower=0, upper=1)
-        complexity.index.name = 'hash_key'
-        complexity.columns = ['complexity']
-        complexity.to_csv(os.path.join(out_path_ds, f'{ds}_complexity.csv'))
-        complexity['dataset'] = ds
-        quantiles = complexity['complexity'].quantile(quantile_labels)
-        quantiles.to_csv(os.path.join(out_path_ds, f'{ds}_complexity_quantiles.csv'))
+            complexity = 1 - (tokens_truth / tokens_src).clip(lower=0, upper=1)
+            complexity.index.name = 'hash_key'
+            complexity.columns = ['complexity']
+            complexity.to_csv(os.path.join(out_path_ds, f'{ds}_complexity.csv'))
+            complexity['dataset'] = ds
+            quantiles = complexity['complexity'].quantile(quantile_labels)
+            quantiles.to_csv(os.path.join(out_path_ds, f'{ds}_complexity_quantiles.csv'))
 
-        complexity_total = pd.concat([complexity_total, complexity])
+            complexity_total = pd.concat([complexity_total, complexity])
 
     complexity_total.reset_index(inplace=True)
     complexity_total.set_index(['hash_key', 'dataset'], inplace=True)
