@@ -277,20 +277,20 @@ def aggregate_scores(score_name, models, datasets, complexity):
             median_micro = model_df.median()
             micro = pd.concat([mean_micro, median_micro])
             micro.name = '_micro'
-            ds_stats = ds_stats.append(micro)
+            ds_stats = pd.concat([ds_stats, micro])
 
             mean_macro = mean_ds.mean()
             median_macro = median_ds.median()
             macro = pd.concat([mean_macro, median_macro])
             macro.name = '_macro'
-            ds_stats = ds_stats.append(macro)
+            ds_stats = pd.concat([ds_stats, macro])
 
             ds_stats.columns = out_df.columns
 
             ds_stats['model'] = m
             ds_stats = ds_stats.reset_index().set_index(['model', 'dataset'])
 
-            out_df = out_df.append(ds_stats.round(3))
+            out_df = pd.concat([out_df, ds_stats.round(3)])
 
             model_f1_scores.append(model_df[main_score_col])
             model_f1_medians.append(median_micro[main_score_col])

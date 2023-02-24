@@ -50,7 +50,7 @@ def calculate(datasets):
 
     os.makedirs(METRICS_COMPLEXITY_PATH, exist_ok=True)
 
-    with click.progressbar(datasets, label='Iterating datasets') as ds_progress:
+    with click.progressbar(datasets, label='Calculating page complexity scores') as ds_progress:
         for ds in ds_progress:
             tokens_truth = {}
             tokens_src = {}
@@ -76,11 +76,10 @@ def calculate(datasets):
         complexity.columns = ['complexity']
         complexity.to_csv(os.path.join(out_path_ds, f'{ds}_complexity.csv'))
         complexity['dataset'] = ds
-
-        quantiles = complexity.quantile(quantile_labels)
+        quantiles = complexity['complexity'].quantile(quantile_labels)
         quantiles.to_csv(os.path.join(out_path_ds, f'{ds}_complexity_quantiles.csv'))
 
-        complexity_total = complexity_total.append(complexity)
+        complexity_total = pd.concat([complexity_total, complexity])
 
     complexity_total.reset_index(inplace=True)
     complexity_total.set_index(['hash_key', 'dataset'], inplace=True)
@@ -129,7 +128,7 @@ def calculate_dataset_features(dataset):
     for hash_key, data in read_dataset(dataset, False):
         features = extract_html_features(data['articleBody'])
         s = pd.Series(features, name=hash_key)
-        df = df.append(s)
+        df = pd.concat([df, s])
     df.to_csv(os.path.join(DATASET_TRUTH_PATH, dataset, f'{dataset}_html_features.csv'))
     return ''
 
@@ -169,11 +168,11 @@ def kmeans_cluster(dataset, reduce_dim, n_clusters):
         for ds in progress:
             df_tmp = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}_html_features.csv'))
             df_tmp['dataset'] = ds
-            df_features = df_features.append(df_tmp, ignore_index=True)
+            df_features = pd.concat([df_features, df_tmp], ignore_index=True)
 
             df_tmp = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}_complexity.csv'))
             df_tmp['dataset'] = ds
-            df_complexity = df_complexity.append(df_tmp, ignore_index=True)
+            df_complexity = pd.concat([df_complexity, df_tmp], ignore_index=True)
 
     df_features.set_index(['hash_key', 'dataset'], inplace=True)
     df_complexity.set_index(['hash_key', 'dataset'], inplace=True)
@@ -264,7 +263,7 @@ def visualize_datasets(datasets):
     :param datasets: list of dataset names
     """
     complexities = []
-    with click.progressbar(datasets, label='Iterating datasets') as progress:
+    with click.progressbar(datasets, label='Loading datasets') as progress:
         for ds in progress:
             path = os.path.join(METRICS_COMPLEXITY_PATH, ds, f'{ds}_complexity.csv')
             if not os.path.isfile(path):
