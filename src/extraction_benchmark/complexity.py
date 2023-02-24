@@ -40,7 +40,7 @@ def _tokenize(text):
 
 def calculate(datasets):
     """
-    Calculcate page complexities for pages in the given datasets based on the ground truth.
+    Calculate page complexities for pages in the given datasets based on the ground truth.
 
     :param datasets: list of dataset names
     """

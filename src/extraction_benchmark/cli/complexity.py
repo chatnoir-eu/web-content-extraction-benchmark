@@ -27,7 +27,7 @@ def complexity():
 
 @complexity.command()
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-def calculcate(dataset):
+def calculate(dataset):
     """
     Calculate page complexities.
 
