@@ -48,7 +48,7 @@ def calculate(dataset):
 
 @complexity.command()
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-def visualize_datasets(dataset):
+def visualize(dataset):
     """
     Visualize the median complexity of the datasets.
     """
