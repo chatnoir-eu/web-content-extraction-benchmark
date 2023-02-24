@@ -21,6 +21,7 @@ DATASET_RAW_PATH = os.path.join(DATASET_PATH, 'raw')
 DATASET_TRUTH_PATH = os.path.join(DATASET_PATH, 'json-format', 'ground-truth')
 
 OUTPUTS_PATH = os.path.join(ROOT_PATH, 'outputs')
+HTML_FEATURES_PATH = os.path.join(OUTPUTS_PATH, 'html-features')
 MODEL_OUTPUTS_PATH = os.path.join(OUTPUTS_PATH, 'model-outputs')
 METRICS_PATH = os.path.join(OUTPUTS_PATH, 'metrics-computed')
 METRICS_AGG_PATH = os.path.join(METRICS_PATH, '_aggregated')

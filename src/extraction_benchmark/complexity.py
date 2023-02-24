@@ -124,13 +124,14 @@ def extract_html_features(html):
 
 def calculate_dataset_features(dataset):
     df = pd.DataFrame()
-    df.index.name = 'hash_key'
     for hash_key, data in read_dataset(dataset, False):
         features = extract_html_features(data['articleBody'])
         s = pd.Series(features, name=hash_key)
-        df = pd.concat([df, s])
-    df.to_csv(os.path.join(DATASET_TRUTH_PATH, dataset, f'{dataset}_html_features.csv'))
-    return ''
+        df = pd.concat([df, s.to_frame().T])
+    df.index.name = 'hash_key'
+    out_dir = os.path.join(HTML_FEATURES_PATH, dataset)
+    os.makedirs(out_dir, exist_ok=True)
+    df.to_csv(os.path.join(out_dir, f'{dataset}_html_features.csv'))
 
 
 def tsne_reduce_dim(X, n_components):
@@ -166,7 +167,7 @@ def kmeans_cluster(dataset, reduce_dim, n_clusters):
     df_complexity = pd.DataFrame()
     with click.progressbar(dataset, label='Loading datasets') as progress:
         for ds in progress:
-            df_tmp = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}_html_features.csv'))
+            df_tmp = pd.read_csv(os.path.join(HTML_FEATURES_PATH, ds, f'{ds}_html_features.csv'))
             df_tmp['dataset'] = ds
             df_features = pd.concat([df_features, df_tmp], ignore_index=True)
 
