@@ -68,7 +68,7 @@ def score(metric, dataset, model, eval_ensembles, parallelism):
 
 
 @eval.command()
-@click.argument('score', type=click.Choice(SCORES))
+@click.argument('score', type=click.Choice(['all', *SCORES]))
 @click.option('-m', '--model', type=click.Choice(['all', *MODELS]), default=['all'], multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
@@ -78,6 +78,8 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
     """
     Aggregate calculated performance metrics.
     """
+    score = sorted(SCORES) if score == 'all' else [score]
+
     if 'all' in model:
         model = sorted(MODELS)
     if 'all' in dataset:
@@ -93,9 +95,13 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
 
     from extraction_benchmark.eval import aggregate_scores
     try:
-        aggregate_scores(score, model, dataset, complexity)
+        with click.progressbar(score, label='Aggregating scores') as progress:
+            for s in progress:
+                aggregate_scores(s, model, dataset, complexity)
     except FileNotFoundError as e:
         raise click.FileError(e.filename, 'Please calculate complexity scores first.')
+
+    click.echo(f'Aggregation written to "{METRICS_PATH}"')
 
 
 @eval.command()

@@ -244,7 +244,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
     barplot_data = []
     for comp in complexity:
         in_df = pd.DataFrame()
-        for d, m in tqdm(list(product(datasets, models)), desc=f'Loading score frames (complexity: {comp})'):
+        for d, m in product(datasets, models):
             p = os.path.join(score_in_path, d, f'{score_name}_{m}.csv')
             if not os.path.isfile(p):
                 continue
@@ -272,7 +272,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
         model_f1_means = []
         model_f1_lower_err = []
         model_f1_upper_err = []
-        for i, m in tqdm(enumerate(models), desc='Calculating model stats', leave=False):
+        for m in models:
             model_df = in_df.loc[m, :, :].drop(columns=['scorer'])
 
             model_ds_group = model_df.groupby('dataset')
@@ -375,4 +375,3 @@ def aggregate_scores(score_name, models, datasets, complexity):
         title_bar,
         score_name)
 
-    click.echo(f'Aggregation written to "{METRICS_PATH}"')
