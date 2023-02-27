@@ -55,12 +55,12 @@ def calculate(datasets):
             tokens_truth = {}
             tokens_src = {}
             for h, truth in read_dataset(ds, True):
-                tokens_truth[h] = len(_tokenize(truth['articleBody']))
+                tokens_truth[h] = len(_tokenize(truth['plaintext']))
             for h, src in read_dataset(ds, False):
                 if h not in tokens_truth:
                     continue
                 # Extract all text tokens except script / style
-                tree = HTMLTree.parse(src['articleBody'])
+                tree = HTMLTree.parse(src['html'])
                 for e in tree.body.query_selector_all('script, style'):
                     e.decompose()
                 tokens_src[h] = len(_tokenize(tree.body.text))
@@ -125,7 +125,7 @@ def extract_html_features(html):
 def calculate_dataset_features(dataset):
     df = pd.DataFrame()
     for hash_key, data in read_dataset(dataset, False):
-        features = extract_html_features(data['articleBody'])
+        features = extract_html_features(data['html'])
         s = pd.Series(features, name=hash_key)
         df = pd.concat([df, s.to_frame().T])
     df.index.name = 'hash_key'
@@ -171,7 +171,7 @@ def kmeans_cluster(dataset, reduce_dim, n_clusters):
             df_tmp['dataset'] = ds
             df_features = pd.concat([df_features, df_tmp], ignore_index=True)
 
-            df_tmp = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}_complexity.csv'))
+            df_tmp = pd.read_csv(os.path.join(METRICS_COMPLEXITY_PATH, ds, f'{ds}_complexity.csv'))
             df_tmp['dataset'] = ds
             df_complexity = pd.concat([df_complexity, df_tmp], ignore_index=True)
 
@@ -192,7 +192,7 @@ def kmeans_cluster(dataset, reduce_dim, n_clusters):
     if sum(labels[labels == 1]) < len(labels[labels == 0]):
         labels = 1 - labels
     df_features['kmeans_label'] = labels
-    df_features.to_csv(os.path.join(DATASET_TRUTH_PATH, 'kmeans_labels.csv'))
+    df_features.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'kmeans_labels.csv'))
 
     click.echo('Reducing dimensionality to 2D for visualization...')
     X = tsne_reduce_dim(X, 2)
@@ -200,8 +200,8 @@ def kmeans_cluster(dataset, reduce_dim, n_clusters):
     df_2d['kmeans_label'] = df_features['kmeans_label']
     df_2d['complexity'] = df_features['complexity']
 
-    df_2d.to_csv(os.path.join(DATASET_TRUTH_PATH, 'complexity_clusters_2d.csv'))
-    click.echo(f'Clustering written to "{DATASET_TRUTH_PATH}"')
+    df_2d.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.csv'))
+    click.echo(f'Clustering written to "{METRICS_COMPLEXITY_PATH}"')
 
 
 def visualize_clusters(quantile):
@@ -211,7 +211,7 @@ def visualize_clusters(quantile):
     :param quantile: complexity quantile to align with cluster boundaries
     """
 
-    p = os.path.join(DATASET_TRUTH_PATH, 'complexity_quantiles.csv')
+    p = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_quantiles.csv')
     if not os.path.isfile(p):
         raise click.FileError(p, 'Please calculate page complexities first.')
     quantiles = pd.read_csv(p, index_col=0)
@@ -220,7 +220,7 @@ def visualize_clusters(quantile):
         x['complexity'] = int(x['complexity'] >= quantiles.loc[float(quantile)]['complexity'])
         return x
 
-    in_path = os.path.join(DATASET_TRUTH_PATH, 'complexity_clusters_2d.csv')
+    in_path = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.csv')
     if not os.path.isfile(in_path):
         raise click.FileError(p, 'Please calculate page complexities first.')
 
@@ -251,10 +251,10 @@ def visualize_clusters(quantile):
     sub_plt(ax2, 'complexity', 'Complexity Quantiles', ['Low', 'High'])
 
     plt.tight_layout(pad=0.5)
-    plt.savefig(os.path.join(DATASET_TRUTH_PATH, f'complexity_clusters_2d.png'))
-    plt.savefig(os.path.join(DATASET_TRUTH_PATH, f'complexity_clusters_2d.pdf'))
+    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity_clusters_2d.png'))
+    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity_clusters_2d.pdf'))
 
-    click.echo(f'Plots written to "{DATASET_TRUTH_PATH}')
+    click.echo(f'Plots written to "{METRICS_COMPLEXITY_PATH}')
 
 
 def visualize_datasets(datasets):

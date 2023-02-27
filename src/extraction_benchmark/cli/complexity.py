@@ -34,7 +34,7 @@ def calculate(dataset):
     Calculate page complexities for given datasets based on the ground truth.
     """
     if 'all' in dataset:
-        dataset = list(DATASETS.keys())
+        dataset = DATASETS.keys()
 
     if not dataset:
         click.echo('No input datasets found.\n'
@@ -53,7 +53,7 @@ def visualize(dataset):
     Visualize the median complexity of the datasets.
     """
     if 'all' in dataset:
-        dataset = list(DATASETS.keys())
+        dataset = DATASETS.keys()
 
     from extraction_benchmark.complexity import visualize_datasets
     visualize_datasets(dataset)
@@ -86,6 +86,9 @@ def cluster(dataset, reduce_dim, clusters):
 
     Perform a k-means clustering of previously extract HTML features to estimate complexity.
     """
+    if 'all' in dataset:
+        dataset = DATASETS.keys()
+
     from extraction_benchmark.complexity import kmeans_cluster
     try:
         kmeans_cluster(dataset, reduce_dim, clusters)

@@ -14,7 +14,6 @@
 
 import ctypes
 import gzip
-import os
 from functools import partial
 from itertools import product
 import json
@@ -122,7 +121,7 @@ def extract(models, datasets, skip_existing, parallelism):
     :param parallelism: number of parallel workers
     """
 
-    if ('web2text' in models or 'boilernet' in models) and parallelism > 1:
+    if parallelism > 1 and ('web2text' in models or 'boilernet' in models):
         click.echo('WARNING: Deep neural models should be run separately and with --parallelism=1', err=True)
 
     model = [(getattr(extractors, 'extract_' + m), m) for m in models]
