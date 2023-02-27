@@ -45,6 +45,7 @@ newspaper3k = "~0.2.8"
 readability-lxml = "~0.8.1"
 resiliparse = "~0.13.7"
 trafilatura = "~1.4.1"
+lz4 = "^4.3.2"
 
 [tool.poetry.scripts]
 wceb = "wceb:main"

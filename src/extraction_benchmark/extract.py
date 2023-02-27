@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import ctypes
-import gzip
 from functools import partial
 from itertools import product
 import json
+import lz4.frame
 from multiprocessing import get_context
 from threading import Thread
-from typing import Any, Dict, Iterable
+from typing import Any, Dict
 import warnings
 
 import click
@@ -62,8 +62,8 @@ def extract_raw_html(datasets):
             for page_id, val in ds_progress:
                 if not val.get('html'):
                     continue
-                with gzip.GzipFile(os.path.join(out_dir, page_id + '.html.gz'), 'w') as f:
-                    f.write(val['html'].encode())
+                with open(os.path.join(out_dir, page_id + '.html.lz4'), 'wb') as f:
+                    f.write(lz4.frame.compress(val['html'].encode()))
 
 
 def _extract_with_model_expand_args(args, skip_existing=False):
