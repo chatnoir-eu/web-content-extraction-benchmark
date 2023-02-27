@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os.path
-import sys
+
+import os
 
 import click
 from extraction_benchmark.globals import *
@@ -22,12 +22,14 @@ from extraction_benchmark.globals import *
 @click.option('-m', '--model', type=click.Choice(['all', *MODELS_ALL]), default=['all'],
               help='Extraction models ("all" does not include ensembles)', multiple=True)
 @click.option('--run-ensembles', is_flag=True, help='Run all ensembles (ignores --model)')
-@click.option('-e', '--exclude-model', type=click.Choice(MODELS_ALL), default=[], multiple=True)
+@click.option('-e', '--exclude-model', type=click.Choice(MODELS_ALL), default=['web2text'],
+              help='Exclude models if "all" are selected.', multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-@click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
+@click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[],
+              help='Exclude datasets if "all" are selected.', multiple=True)
 @click.option('-s', '--skip-existing', is_flag=True, help='Load existing answer and extract only new')
 @click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
-def extract( model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_existing, parallelism):
+def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_existing, parallelism):
     """
     Run main content extractors on the datasets.
     """

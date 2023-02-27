@@ -1,0 +1,3 @@
+[submodule "third-party/web2text"]
+	path = third-party/web2text
+	url = https://github.com/dalab/web2text.git

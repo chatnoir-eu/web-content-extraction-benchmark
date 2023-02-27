@@ -12,22 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import hashlib
 import os
 import subprocess
 import tempfile
 
-BASE_PATH = os.path.dirname(__file__)
-WEB2TEXT_PYTHONPATH = os.path.abspath(os.path.join(BASE_PATH, '..', '..', 'web2text', 'src', 'main', 'python'))
+MODULE_PATH = os.path.dirname(__file__)
+WEB2TEXT_BASEPATH = os.path.join(os.getcwd(), 'third-party', 'web2text')
+WEB2TEXT_PYTHONPATH = os.path.join(WEB2TEXT_BASEPATH, 'src', 'main', 'python')
+WEB2TEXT_VENV = os.path.join(WEB2TEXT_BASEPATH, 'venv')
+
+
+if not os.path.isdir(WEB2TEXT_PYTHONPATH):
+    raise FileNotFoundError(errno.ENOENT, WEB2TEXT_BASEPATH,
+                            'Could not find Web2Text under current working directory. Please ensure you have the '
+                            'submodule checked out and are running this from the repository\'s root directory.')
+
+if not os.path.isdir(WEB2TEXT_VENV):
+    raise FileNotFoundError(errno.ENOENT, WEB2TEXT_VENV,
+                            'Could not find venv in Web2Text directory. '
+                            'Please follow README instructions to create one')
 
 
 def extract(html):
-    scala_cmd = ['scala', '-cp', os.path.join(BASE_PATH, 'web2text.jar')]
+    scala_cmd = ['scala', '-cp', os.path.join(MODULE_PATH, 'web2text.jar')]
     python_cmd = ['python', os.path.join(WEB2TEXT_PYTHONPATH, 'main.py')]
     hash_id = hashlib.sha256(html.encode()).hexdigest()
 
     proc_env = os.environ.copy()
-    proc_env['VIRTUAL_ENV'] = os.path.join(BASE_PATH, 'venv')
+    proc_env['VIRTUAL_ENV'] = WEB2TEXT_VENV
     proc_env['PATH'] = '{}/bin:{}'.format(proc_env['VIRTUAL_ENV'], proc_env['PATH'])
     proc_env['JAVA_HOME'] = '/usr/lib/jvm/java-8-openjdk-amd64'
 
@@ -36,28 +50,34 @@ def extract(html):
         html_file = file_base + '.html'
         features_file = file_base + '.features'
         labels_file = file_base + '.labels'
-        text_file = file_base + '.text'
+        text_file = file_base + '.txt'
 
         open(html_file, 'w').write(html)
-        subprocess.Popen(
+        exit_code = subprocess.Popen(
             scala_cmd + ['ch.ethz.dalab.web2text.ExtractPageFeatures', html_file, features_file],
             env=proc_env,
             stderr=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL
         ).wait()
+        if exit_code != 0:
+            raise RuntimeError('Web2Text ExtractPageFeatures failed.')
 
-        subprocess.Popen(
+        exit_code = subprocess.Popen(
             python_cmd + ['classify', features_file, labels_file],
             env=proc_env,
             stderr=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL
         ).wait()
+        if exit_code != 0:
+            raise RuntimeError('Web2Text DOM node classification failed.')
 
-        subprocess.Popen(
+        exit_code = subprocess.Popen(
             scala_cmd + ['ch.ethz.dalab.web2text.ApplyLabelsToPage', html_file, labels_file, text_file],
             env=proc_env,
             stderr=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL
         ).wait()
+        if exit_code != 0:
+            raise RuntimeError('Web2Text ApplyLabelsToPage failed.')
 
         return open(text_file, 'r').read()
