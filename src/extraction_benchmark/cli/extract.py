@@ -11,51 +11,54 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+import os.path
 import sys
 
 import click
 from extraction_benchmark.globals import *
 
 
-@click.group()
-@click.pass_context
-@click.argument('model', type=click.Choice(['all', *MODELS]), required=True, nargs=-1)
-@click.option('--run-ensembles', is_flag=True, help='Run all ensembles')
-@click.option('-e', '--exclude-model', type=click.Choice(MODELS), default=[], multiple=True)
+@click.command()
+@click.option('-m', '--model', type=click.Choice(['all', *MODELS_ALL]), default=['all'],
+              help='Extraction models ("all" does not include ensembles)', multiple=True)
+@click.option('--run-ensembles', is_flag=True, help='Run all ensembles (ignores --model)')
+@click.option('-e', '--exclude-model', type=click.Choice(MODELS_ALL), default=[], multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
 @click.option('-s', '--skip-existing', is_flag=True, help='Load existing answer and extract only new')
 @click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
-def extract(ctx, model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_existing, parallelism):
+def extract( model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_existing, parallelism):
     """
     Run main content extractors on the datasets.
     """
-    if 'all' in model:
-        model = sorted(m for m in MODELS if m not in exclude_model)
+
+    if not os.path.isdir(DATASET_COMBINED_PATH):
+        raise click.UsageError('Combined dataset not found. '
+                               'Please create the converted dataset first using the "convert-datasets" command.')
+
     if run_ensembles:
-        model = sorted(m for m in MODELS_ALL if m.startswith('ensemble_'))
+        model = sorted(m for m in MODELS_ALL if m.startswith('ensemble_') and m not in exclude_model)
+    elif 'all' in model:
+        model = sorted(m for m in MODELS if m not in exclude_model)
+        click.confirm('This will run ALL models. It may be wise to select only individual models with --model.\n'
+                      'Continue anyway?', abort=True)
+
+    if not os.path.isfile(MODEL_OUTPUTS_PATH):
+        for m in model:
+            if m.startswith('ensemble_'):
+                raise click.UsageError('Model outputs need to be generated before ensemble can be run.')
+
     if 'all' in dataset:
         dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
-
-    if not model:
-        click.echo(f'No models selected. Run {sys.argv[0]} {ctx.command.name} --help for more info.', err=True)
-        return
 
     if not dataset:
         click.echo('No input datasets found.\n'
                    'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
-                   'under the current working directory.', err=False)
+                   'under the current working directory.', err=True)
         return
 
     from extraction_benchmark import extract
-    try:
-        extract.extract(model, dataset, skip_existing, parallelism)
-    except FileNotFoundError as e:
-        click.FileError(e.filename,
-                        'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
-                        'under the current working directory.')
+    extract.extract(model, dataset, skip_existing, parallelism)
 
 
 @click.command()
@@ -65,14 +68,15 @@ def convert_datasets(dataset, exclude_dataset):
     """
     Combine raw datasets and convert them to a line-delimieted JSON format.
     """
+
+    if not os.path.isdir(DATASET_RAW_PATH):
+        raise click.UsageError('Raw datasets not found. '
+                               'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
+                               'under the current working directory.')
+
     if 'all' in dataset:
         dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
 
     from extraction_benchmark import extract
-    try:
-        extract.extract_ground_truth(dataset)
-        extract.extract_raw_html(dataset)
-    except FileNotFoundError as e:
-        click.FileError(e.filename,
-                        'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
-                        'under the current working directory.')
+    page_ids = extract.extract_ground_truth(dataset)
+    extract.extract_raw_html(dataset, page_ids)

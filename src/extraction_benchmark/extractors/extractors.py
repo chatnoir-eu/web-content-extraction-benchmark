@@ -176,7 +176,7 @@ def _get_ensemble_model_list(best_only=False, weighted=False):
                 (extract_boilerpipe, 1),
             ]
 
-        return [(m, 1) for m in list_extractors(names_only=False)]
+        return [(m, 1) for m in list_extractors(names_only=False, include_ensembles=False)]
 
     return zip(*[(m.__name__.replace('extract_', ''), w) for m, w in _ls()])
 

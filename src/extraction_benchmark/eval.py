@@ -76,6 +76,19 @@ def levenshtein_eval(key, model, dataset, target, pred):
     )]
 
 
+def read_jsonl(file):
+    with open(file, 'r') as f:
+        for line in f:
+            yield json.loads(line)
+
+
+def jsonl_to_dict(file):
+    loaded = {}
+    for j in read_jsonl(file):
+        loaded[j['page_id']] = {k: v for k, v in j.items() if k != 'page_id'}
+    return loaded
+
+
 def _eval_expand_args(args):
     scorer, model, dataset, answer_path, gt_path = args
 
@@ -86,20 +99,15 @@ def _eval_expand_args(args):
     else:
         raise ValueError('Illegal scorer')
 
-    try:
-        model_answers = json.load(open(answer_path, 'r'))
-        ground_truth = json.load(open(gt_path, 'r'))
-    except:
-        return
+    ground_truth = jsonl_to_dict(gt_path)
+    df = pd.DataFrame()
+    for model_answer in read_jsonl(answer_path):
+        if model_answer['page_id'] not in ground_truth:
+            continue
+        target = ground_truth[model_answer['page_id']].get('plaintext') or ''
+        pred = model_answer.get('plaintext') or ''
+        df = pd.concat([df, pd.DataFrame(scorer_func(model_answer['page_id'], model, dataset, target, pred))])
 
-    scores = []
-    for key in ground_truth.keys():
-        target = ground_truth[key].get('articleBody', '') or ''
-        pred = model_answers.get(key, {}).get('articleBody', '') or ''
-        scores.extend(scorer_func(key, model, dataset, target, pred))
-
-    df = pd.DataFrame(scores)
-    df.set_index('hash_key')
     store_path = os.path.join(METRICS_PATH, scorer, dataset)
     os.makedirs(store_path, exist_ok=True)
     df.to_csv(os.path.join(store_path, f'{scorer}_{model}.csv'), index=False)
@@ -116,14 +124,14 @@ def calculcate_scores(metrics, datasets, models, parallelism):
     """
     jobs = []
     for ds in tqdm(datasets, desc='Loading extractions', leave=False):
-        ground_truth_path = os.path.join(DATASET_COMBINED_TRUTH_PATH, ds, f'{ds}.json')
+        ground_truth_path = os.path.join(DATASET_COMBINED_TRUTH_PATH, f'{ds}.jsonl')
         if not os.path.isfile(ground_truth_path):
             continue
 
-        for mod in models:
-            model_answer_path = os.path.join(MODEL_OUTPUTS_PATH, ds, mod, f'{mod}.json')
+        for model in models:
+            model_answer_path = os.path.join(MODEL_OUTPUTS_PATH, ds,  f'{model}.jsonl')
             if os.path.isfile(model_answer_path):
-                jobs.extend([met, mod, ds, model_answer_path, ground_truth_path] for met in metrics)
+                jobs.extend([met, model, ds, model_answer_path, ground_truth_path] for met in metrics)
 
     with get_context('spawn').Pool(processes=parallelism) as pool:
         for _ in tqdm(pool.imap_unordered(_eval_expand_args, jobs),
@@ -227,7 +235,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
         score_cols = ['dist']
         main_score_col = 'dist'
 
-    comp_quant_path = os.path.join(DATASET_COMBINED_TRUTH_PATH, 'complexity_quantiles.csv')
+    comp_quant_path = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_quantiles.csv')
     q = pd.read_csv(comp_quant_path, index_col=0)
     compl_range = {'all': None}
     compl_range.update({k: v for k, v in zip(COMPLEXITIES, pairwise([0, float(q.loc[0.25]), float(q.loc[0.75]), 1]))})
@@ -244,7 +252,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
             df = pd.read_csv(p, index_col=['model', 'dataset'])
             if compl_range[comp] is not None:
                 # Filter input dataframe to include only pages within chosen complexity range
-                c = pd.read_csv(os.path.join(DATASET_COMBINED_TRUTH_PATH, d, f'{d}_complexity.csv'), index_col='hash_key')
+                c = pd.read_csv(os.path.join(METRICS_COMPLEXITY_PATH, d, f'{d}_complexity.csv'), index_col='hash_key')
                 c = c[(c['complexity'] >= compl_range[comp][0]) & (c['complexity'] <= compl_range[comp][1])]
                 df = df[df['hash_key'].isin(c.index)]
 
@@ -275,14 +283,14 @@ def aggregate_scores(score_name, models, datasets, complexity):
 
             mean_micro = model_df.mean()
             median_micro = model_df.median()
-            micro = pd.concat([mean_micro, median_micro])
-            micro.name = '_micro'
+            micro = pd.concat([mean_micro, median_micro]).to_frame('_micro').T
+            micro.index.name = 'dataset'
             ds_stats = pd.concat([ds_stats, micro])
 
             mean_macro = mean_ds.mean()
             median_macro = median_ds.median()
-            macro = pd.concat([mean_macro, median_macro])
-            macro.name = '_macro'
+            macro = pd.concat([mean_macro, median_macro]).to_frame('_macro').T
+            macro.index.name = 'dataset'
             ds_stats = pd.concat([ds_stats, macro])
 
             ds_stats.columns = out_df.columns
@@ -326,8 +334,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
 
         # Compile reduced versions of the table with global averages
         for series in '_micro', '_macro':
-            out_df_reduced = out_df.loc[:, series, :].droplevel('dataset').sort_values(
-                f'mean_{main_score_col}', ascending=False)
+            out_df_reduced = out_df.loc[:, series, :].sort_values(f'mean_{main_score_col}', ascending=False)
             out_df_reduced.name = 'Model'
             if score_name == 'rouge':
                 out_df_reduced.columns = ['Mean Precision', 'Mean Recall', 'Mean F1',

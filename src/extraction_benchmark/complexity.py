@@ -27,7 +27,7 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from resiliparse.parse.html import HTMLTree
 
-from extraction_benchmark.extract import read_raw_dataset
+from extraction_benchmark.dataset_readers import read_datasets
 from extraction_benchmark.globals import *
 
 _TOKEN_RE = re.compile(r'\w+', flags=re.UNICODE)
@@ -54,9 +54,9 @@ def calculate(datasets):
         for ds in ds_progress:
             tokens_truth = {}
             tokens_src = {}
-            for h, truth in read_raw_dataset(ds, True):
+            for h, truth in read_datasets([ds], True):
                 tokens_truth[h] = len(_tokenize(truth['plaintext']))
-            for h, src in read_raw_dataset(ds, False):
+            for h, src in read_datasets([ds], False):
                 if h not in tokens_truth:
                     continue
                 # Extract all text tokens except script / style
@@ -124,7 +124,7 @@ def extract_html_features(html):
 
 def calculate_dataset_features(dataset):
     df = pd.DataFrame()
-    for hash_key, data in read_raw_dataset(dataset, False):
+    for hash_key, data in read_datasets([dataset], False):
         features = extract_html_features(data['html'])
         s = pd.Series(features, name=hash_key)
         df = pd.concat([df, s.to_frame().T])

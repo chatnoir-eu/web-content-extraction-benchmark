@@ -11,14 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os.path
+
 from abc import ABC, abstractmethod
+import errno
 import glob
 import gzip
 import hashlib
 from itertools import chain
 import json
 import lz4.frame
+import os
 import re
 from typing import Any, Dict, Iterable, Optional, Tuple
 
@@ -244,7 +246,10 @@ class ScrapingHubReader(DatasetReader):
         if self.is_truth:
             truth_json = json.load(open(os.path.join(dataset_path, 'ground-truth.json'), 'r'))
             for k, v in truth_json.items():
-                yield k, self._build_dict('scrapinghub', None, v['articleBody'], url=v['url'])
+                # Instead of using provided hash, re-calculate hash from original HTML file for consistency
+                with gzip.GzipFile(os.path.join(dataset_path, 'html', f'{k}.html.gz'), 'r') as f:
+                    file_hash = self._hash(f.read())
+                yield file_hash, self._build_dict('scrapinghub', k, v['articleBody'], url=v['url'])
             return
 
         dataset_path = os.path.join(dataset_path, 'html')
@@ -323,23 +328,25 @@ class CombinedDatasetReader(DatasetReader):
     def read(self) -> Iterable[Tuple[str, Dict[str, Any]]]:
         if self.is_truth:
             for ds in self.subsets:
-                with open(os.path.join(DATASET_COMBINED_TRUTH_PATH, ds, f'{ds}.jsonl')) as f:
+                with open(os.path.join(DATASET_COMBINED_TRUTH_PATH, f'{ds}.jsonl')) as f:
                     for line in f:
                         j = json.loads(line)
                         yield j['page_id'], {k: v for k, v in j.items() if k != 'page_id'}
             return
 
-        in_files = chain(*(glob.glob(os.path.join(DATASET_COMBINED_HTML_PATH, ds, '*.html.lz4'))
-                           for ds in self.subsets))
-        for filename in in_files:
-            yield os.path.splitext(os.path.splitext(filename)[0])[0], self._read_file(filename, 'utf-8')
+        for ds in self.subsets:
+            for filename in glob.glob(os.path.join(DATASET_COMBINED_HTML_PATH, ds, '*.html.lz4')):
+                page_id = os.path.splitext(os.path.splitext(os.path.basename(filename))[0])[0]
+                yield page_id, self._build_dict(ds, page_id, self._read_file(filename, 'utf-8'))
 
     def dataset_size(self) -> Optional[int]:
-        return sum(1 for _ in chain(*(glob.glob(os.path.join(DATASET_COMBINED_HTML_PATH, ds, '*.html.lz4'))
-                                      for ds in self.subsets)))
+        # Count lines in all truth files
+        return sum(chain(*((1 for _ in open(
+            os.path.join(DATASET_COMBINED_TRUTH_PATH, f'{ds}.jsonl'), 'r')) for ds in self.subsets)))
 
 
 def read_raw_dataset(dataset, ground_truth):
+    """Read raw (unprocessed datasets)."""
     match dataset:
         case 'cetd':
             return CETDReader(ground_truth)
@@ -361,8 +368,9 @@ def read_raw_dataset(dataset, ground_truth):
             raise ValueError(f'Invalid dataset: {dataset}')
 
 
-def read_combined_dataset(subsets, ground_truth):
-    if not os.path.isdir(DATASET_COMBINED_TRUTH_PATH) or not os.path.isdir(DATASET_COMBINED_HTML_PATH):
-        raise FileNotFoundError('Combined dataset path not found. Make sure you have converted the raw datasets.')
+def read_datasets(datasets: Iterable[str], ground_truth):
+    """Read (subsets of) processed and combined datasets."""
+    if not os.path.isdir(DATASET_COMBINED_PATH):
+        raise FileNotFoundError(errno.ENOENT, 'Combined dataset folder not found', DATASET_COMBINED_PATH)
 
-    return CombinedDatasetReader(ground_truth, subsets)
+    return CombinedDatasetReader(ground_truth, datasets)

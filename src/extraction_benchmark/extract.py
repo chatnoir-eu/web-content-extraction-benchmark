@@ -24,7 +24,7 @@ import warnings
 
 import click
 
-from extraction_benchmark.dataset_readers import read_raw_dataset
+from extraction_benchmark.dataset_readers import read_datasets, read_raw_dataset
 from extraction_benchmark.extractors import extractors
 from extraction_benchmark.paths import *
 
@@ -42,24 +42,35 @@ def extract_ground_truth(datasets):
     Convert ground truth from raw dataset to JSON format.
 
     :param datasets: list of input dataset
+    :return: set of page IDs that were extracted
     """
+
+    page_ids = set()
     for ds in datasets:
         with click.progressbar(read_raw_dataset(ds, True), label=f'Converting ground truth of {ds}') as ds_progress:
             extracted = {k: v for k, v in ds_progress}
-        _dict_to_jsonl(os.path.join(DATASET_COMBINED_TRUTH_PATH, ds, ds + '.jsonl'), extracted)
+            page_ids.update(extracted.keys())
+        _dict_to_jsonl(os.path.join(DATASET_COMBINED_TRUTH_PATH, f'{ds}.jsonl'), extracted)
+    return page_ids
 
 
-def extract_raw_html(datasets):
+def extract_raw_html(datasets, page_id_whitelist=None):
     """
     Convert HTML files from raw dataset to JSON format.
 
     :param datasets: list of input dataset
+    :param page_id_whitelist: optional list of page IDs to include (if set, IDs not in this list will be skipped)
     """
+    if page_id_whitelist and type(page_id_whitelist) is not set:
+        page_id_whitelist = set(page_id_whitelist)
+
     for ds in datasets:
         out_dir = os.path.join(DATASET_COMBINED_HTML_PATH, ds)
         os.makedirs(out_dir, exist_ok=True)
         with click.progressbar(read_raw_dataset(ds, False), label=f'Converting HTML of {ds}') as ds_progress:
             for page_id, val in ds_progress:
+                if page_id_whitelist and page_id not in page_id_whitelist:
+                    continue
                 if not val.get('html'):
                     continue
                 with open(os.path.join(out_dir, page_id + '.html.lz4'), 'wb') as f:
@@ -72,7 +83,7 @@ def _extract_with_model_expand_args(args, skip_existing=False):
 
 def _extract_with_model(model, dataset, skip_existing=False):
     model, model_name = model
-    out_path = os.path.join(MODEL_OUTPUTS_PATH, dataset, model_name, model_name + '.jsonl')
+    out_path = os.path.join(MODEL_OUTPUTS_PATH, dataset, model_name + '.jsonl')
 
     extracted = {}
     if skip_existing and os.path.isfile(out_path):
@@ -84,7 +95,7 @@ def _extract_with_model(model, dataset, skip_existing=False):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
 
-        for file_hash, in_data in read_raw_dataset(dataset, False):
+        for file_hash, in_data in read_datasets([dataset], False):
             if file_hash in extracted:
                 continue
 
@@ -112,7 +123,7 @@ def _extract_with_model(model, dataset, skip_existing=False):
     if not extracted:
         return
 
-    _dict_to_jsonl(out_path, out_data)
+    _dict_to_jsonl(out_path, extracted)
 
 
 def extract(models, datasets, skip_existing, parallelism):

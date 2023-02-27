@@ -51,7 +51,11 @@ def score(metric, dataset, model, eval_ensembles, parallelism):
         return
 
     from extraction_benchmark.eval import calculcate_scores
-    calculcate_scores(metric, dataset, model, parallelism)
+    try:
+        calculcate_scores(metric, dataset, model, parallelism)
+    except FileNotFoundError as e:
+        click.FileError(e.filename,
+                        f'Make sure you have converted the raw datasets using "convert-datasets".')
 
 
 @eval.command(name='aggregate')
