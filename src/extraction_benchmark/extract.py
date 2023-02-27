@@ -137,7 +137,9 @@ def extract(models, datasets, skip_existing, parallelism):
     """
 
     if parallelism > 1 and ('web2text' in models or 'boilernet' in models):
-        click.echo('WARNING: Deep neural models should be run separately and with --parallelism=1', err=True)
+        click.echo(
+            'WARNING: Deep neural models selected, setting --parallelism=1 to avoid GPU memory problems.', err=True)
+        parallelism = 1
 
     model = [(getattr(extractors, 'extract_' + m), m) for m in models]
     jobs = list(product(model, datasets))
