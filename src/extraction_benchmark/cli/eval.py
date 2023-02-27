@@ -50,6 +50,13 @@ def score(metric, dataset, model, eval_ensembles, parallelism):
         click.echo('No models selected.', err=True)
         return
 
+    import nltk
+    try:
+        # Needed for Rouge
+        nltk.data.find('tokenizers/punkt')
+    except:
+        nltk.download('punkt')
+
     from extraction_benchmark.eval import calculcate_scores
     try:
         calculcate_scores(metric, dataset, model, parallelism)
