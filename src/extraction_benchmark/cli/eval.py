@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
+
 import click
 from extraction_benchmark.globals import *
 
@@ -23,7 +25,7 @@ def eval():
     """
 
 
-@eval.command(name='score')
+@eval.command()
 @click.argument('metric', type=click.Choice(['all', *SCORES]))
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-m', '--model', type=click.Choice(['all', *MODELS]), default=['all'], multiple=True)
@@ -65,7 +67,7 @@ def score(metric, dataset, model, eval_ensembles, parallelism):
                         f'Make sure you have converted the raw datasets using "convert-datasets".')
 
 
-@eval.command(name='aggregate')
+@eval.command()
 @click.argument('score', type=click.Choice(SCORES))
 @click.option('-m', '--model', type=click.Choice(['all', *MODELS]), default=['all'], multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
@@ -94,3 +96,29 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
         aggregate_scores(score, model, dataset, complexity)
     except FileNotFoundError as e:
         raise click.FileError(e.filename, 'Please calculate complexity scores first.')
+
+
+@eval.command()
+def cythonize_rouge():
+    """
+    Cythonize Rouge-Score module.
+
+    By cythonizing the Rouge-Score module, the slow scoring performance can be improved slightly.
+    """
+
+    click.confirm('This will cythonize the rouge-score module. '
+                  'You will have to reinstall it to revert the changes. Continue?', abort=True)
+
+    import rouge_score
+    path = os.path.dirname(rouge_score.__file__)
+
+    py_files = glob.glob(os.path.join(path, '*.py'))
+    if not py_files:
+        click.echo('No Python files found in module. Has the module already been cythonized?', err=True)
+        return
+
+    for p in py_files:
+        os.rename(p, p + 'x')
+
+    from Cython.Build.Cythonize import main as cython_main
+    cython_main(['cythonize', '-3', '--inplace', *glob.glob(os.path.join(path, '*.pyx'))])
