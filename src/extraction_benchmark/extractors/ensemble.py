@@ -51,8 +51,8 @@ def _load_ground_truth():
     if _GROUND_TRUTH:
         return
 
-    for ds in os.listdir(DATASET_TRUTH_PATH):
-        in_file = os.path.join(DATASET_TRUTH_PATH, ds, ds + '.json')
+    for ds in os.listdir(DATASET_COMBINED_TRUTH_PATH):
+        in_file = os.path.join(DATASET_COMBINED_TRUTH_PATH, ds, ds + '.json')
         if not os.path.isfile(in_file):
             continue
         truth = json.load(open(in_file, 'r'))

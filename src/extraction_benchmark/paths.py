@@ -18,8 +18,9 @@ ROOT_PATH = os.path.realpath(os.path.join(os.getcwd()))
 DATASET_PATH = os.path.join(ROOT_PATH, 'datasets')
 
 DATASET_RAW_PATH = os.path.join(DATASET_PATH, 'raw')
-DATASET_TRUTH_PATH = os.path.join(DATASET_PATH, 'converted', 'ground-truth')
-DATASET_HTML_PATH = os.path.join(DATASET_PATH, 'converted', 'html')
+DATASET_COMBINED_PATH = os.path.join(DATASET_PATH, 'combined')
+DATASET_COMBINED_TRUTH_PATH = os.path.join(DATASET_COMBINED_PATH, 'ground-truth')
+DATASET_COMBINED_HTML_PATH = os.path.join(DATASET_COMBINED_PATH, 'html')
 
 OUTPUTS_PATH = os.path.join(ROOT_PATH, 'outputs')
 HTML_FEATURES_PATH = os.path.join(OUTPUTS_PATH, 'html-features')

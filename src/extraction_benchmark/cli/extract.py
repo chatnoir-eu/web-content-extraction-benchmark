@@ -58,19 +58,12 @@ def extract(ctx, model, run_ensembles, exclude_model, dataset, exclude_dataset, 
                         'under the current working directory.')
 
 
-@click.group()
-def convert():
-    """
-    Convert raw datasets to JSON format.
-    """
-
-
-@convert.command()
+@click.command()
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
-def convert_truth(dataset, exclude_dataset):
+def convert_datasets(dataset, exclude_dataset):
     """
-    Convert raw ground truth to JSON format.
+    Combine raw datasets and convert them to a line-delimieted JSON format.
     """
     if 'all' in dataset:
         dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
@@ -78,24 +71,6 @@ def convert_truth(dataset, exclude_dataset):
     from extraction_benchmark import extract
     try:
         extract.extract_ground_truth(dataset)
-    except FileNotFoundError as e:
-        click.FileError(e.filename,
-                        'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
-                        'under the current working directory.')
-
-
-@convert.command()
-@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-@click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
-def convert_html(dataset, exclude_dataset):
-    """
-    Convert raw HTML pages to JSON format.
-    """
-    if 'all' in dataset:
-        dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
-
-    from extraction_benchmark import extract
-    try:
         extract.extract_raw_html(dataset)
     except FileNotFoundError as e:
         click.FileError(e.filename,

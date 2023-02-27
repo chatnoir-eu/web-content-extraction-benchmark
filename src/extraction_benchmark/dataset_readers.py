@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os.path
 from abc import ABC, abstractmethod
 import glob
 import gzip
 import hashlib
+from itertools import chain
 import json
 import lz4.frame
 import re
@@ -24,6 +25,7 @@ from typing import Any, Dict, Iterable, Optional, Tuple
 from resiliparse.parse import bytes_to_str, detect_encoding
 from resiliparse.parse.html import HTMLTree, NodeType
 
+from extraction_benchmark.globals import DATASETS
 from extraction_benchmark.paths import *
 
 
@@ -313,7 +315,31 @@ class GoogleTrends2017Reader(L3SGN1Reader):
         return len(glob.glob(os.path.join(DATASET_RAW_PATH, 'google-trends-2017', 'prepared_html', '*.html')))
 
 
-def read_dataset(dataset, ground_truth):
+class CombinedDatasetReader(DatasetReader):
+    def __init__(self, ground_truth, read_subsets=None):
+        super().__init__(ground_truth)
+        self.subsets = sorted(read_subsets) if read_subsets else sorted(DATASETS)
+
+    def read(self) -> Iterable[Tuple[str, Dict[str, Any]]]:
+        if self.is_truth:
+            for ds in self.subsets:
+                with open(os.path.join(DATASET_COMBINED_TRUTH_PATH, ds, f'{ds}.jsonl')) as f:
+                    for line in f:
+                        j = json.loads(line)
+                        yield j['page_id'], {k: v for k, v in j.items() if k != 'page_id'}
+            return
+
+        in_files = chain(*(glob.glob(os.path.join(DATASET_COMBINED_HTML_PATH, ds, '*.html.lz4'))
+                           for ds in self.subsets))
+        for filename in in_files:
+            yield os.path.splitext(os.path.splitext(filename)[0])[0], self._read_file(filename, 'utf-8')
+
+    def dataset_size(self) -> Optional[int]:
+        return sum(1 for _ in chain(*(glob.glob(os.path.join(DATASET_COMBINED_HTML_PATH, ds, '*.html.lz4'))
+                                      for ds in self.subsets)))
+
+
+def read_raw_dataset(dataset, ground_truth):
     match dataset:
         case 'cetd':
             return CETDReader(ground_truth)
@@ -333,3 +359,10 @@ def read_dataset(dataset, ground_truth):
             return ScrapingHubReader(ground_truth)
         case _:
             raise ValueError(f'Invalid dataset: {dataset}')
+
+
+def read_combined_dataset(subsets, ground_truth):
+    if not os.path.isdir(DATASET_COMBINED_TRUTH_PATH) or not os.path.isdir(DATASET_COMBINED_HTML_PATH):
+        raise FileNotFoundError('Combined dataset path not found. Make sure you have converted the raw datasets.')
+
+    return CombinedDatasetReader(ground_truth, subsets)

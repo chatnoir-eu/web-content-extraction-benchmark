@@ -116,7 +116,7 @@ def calculcate_scores(metrics, datasets, models, parallelism):
     """
     jobs = []
     for ds in tqdm(datasets, desc='Loading extractions', leave=False):
-        ground_truth_path = os.path.join(DATASET_TRUTH_PATH, ds, f'{ds}.json')
+        ground_truth_path = os.path.join(DATASET_COMBINED_TRUTH_PATH, ds, f'{ds}.json')
         if not os.path.isfile(ground_truth_path):
             continue
 
@@ -227,7 +227,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
         score_cols = ['dist']
         main_score_col = 'dist'
 
-    comp_quant_path = os.path.join(DATASET_TRUTH_PATH, 'complexity_quantiles.csv')
+    comp_quant_path = os.path.join(DATASET_COMBINED_TRUTH_PATH, 'complexity_quantiles.csv')
     q = pd.read_csv(comp_quant_path, index_col=0)
     compl_range = {'all': None}
     compl_range.update({k: v for k, v in zip(COMPLEXITIES, pairwise([0, float(q.loc[0.25]), float(q.loc[0.75]), 1]))})
@@ -244,7 +244,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
             df = pd.read_csv(p, index_col=['model', 'dataset'])
             if compl_range[comp] is not None:
                 # Filter input dataframe to include only pages within chosen complexity range
-                c = pd.read_csv(os.path.join(DATASET_TRUTH_PATH, d, f'{d}_complexity.csv'), index_col='hash_key')
+                c = pd.read_csv(os.path.join(DATASET_COMBINED_TRUTH_PATH, d, f'{d}_complexity.csv'), index_col='hash_key')
                 c = c[(c['complexity'] >= compl_range[comp][0]) & (c['complexity'] <= compl_range[comp][1])]
                 df = df[df['hash_key'].isin(c.index)]
 

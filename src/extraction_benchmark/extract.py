@@ -24,7 +24,7 @@ import warnings
 
 import click
 
-from extraction_benchmark.dataset_readers import read_dataset
+from extraction_benchmark.dataset_readers import read_raw_dataset
 from extraction_benchmark.extractors import extractors
 from extraction_benchmark.paths import *
 
@@ -44,9 +44,9 @@ def extract_ground_truth(datasets):
     :param datasets: list of input dataset
     """
     for ds in datasets:
-        with click.progressbar(read_dataset(ds, True), label=f'Converting truth of {ds}') as ds_progress:
+        with click.progressbar(read_raw_dataset(ds, True), label=f'Converting ground truth of {ds}') as ds_progress:
             extracted = {k: v for k, v in ds_progress}
-        _dict_to_jsonl(os.path.join(DATASET_TRUTH_PATH, ds, ds + '.jsonl'), extracted)
+        _dict_to_jsonl(os.path.join(DATASET_COMBINED_TRUTH_PATH, ds, ds + '.jsonl'), extracted)
 
 
 def extract_raw_html(datasets):
@@ -56,9 +56,9 @@ def extract_raw_html(datasets):
     :param datasets: list of input dataset
     """
     for ds in datasets:
-        out_dir = os.path.join(DATASET_HTML_PATH, ds)
+        out_dir = os.path.join(DATASET_COMBINED_HTML_PATH, ds)
         os.makedirs(out_dir, exist_ok=True)
-        with click.progressbar(read_dataset(ds, False), label=f'Converting HTML of {ds}') as ds_progress:
+        with click.progressbar(read_raw_dataset(ds, False), label=f'Converting HTML of {ds}') as ds_progress:
             for page_id, val in ds_progress:
                 if not val.get('html'):
                     continue
@@ -84,7 +84,7 @@ def _extract_with_model(model, dataset, skip_existing=False):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
 
-        for file_hash, in_data in read_dataset(dataset, False):
+        for file_hash, in_data in read_raw_dataset(dataset, False):
             if file_hash in extracted:
                 continue
 
