@@ -33,11 +33,11 @@ def extract(ctx, model, run_ensembles, exclude_model, dataset, exclude_dataset, 
     Run main content extractors on the datasets.
     """
     if 'all' in model:
-        model = [m for m in MODELS if m not in exclude_model]
+        model = sorted(m for m in MODELS if m not in exclude_model)
     if run_ensembles:
-        model = [m for m in MODELS_ALL if m.startswith('ensemble_')]
+        model = sorted(m for m in MODELS_ALL if m.startswith('ensemble_'))
     if 'all' in dataset:
-        dataset = [d for d in DATASETS if d not in exclude_dataset]
+        dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
 
     if not model:
         click.echo(f'No models selected. Run {sys.argv[0]} {ctx.command.name} --help for more info.', err=True)
@@ -73,7 +73,7 @@ def convert_truth(dataset, exclude_dataset):
     Convert raw ground truth to JSON format.
     """
     if 'all' in dataset:
-        dataset = [d for d in DATASETS if d not in exclude_dataset]
+        dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
 
     from extraction_benchmark import extract
     try:
@@ -92,7 +92,7 @@ def convert_html(dataset, exclude_dataset):
     Convert raw HTML pages to JSON format.
     """
     if 'all' in dataset:
-        dataset = [d for d in DATASETS if d not in exclude_dataset]
+        dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
 
     from extraction_benchmark import extract
     try:

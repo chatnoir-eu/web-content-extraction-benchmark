@@ -35,13 +35,12 @@ def score(metric, dataset, model, eval_ensembles, parallelism):
     """
 
     if 'all' in dataset:
-        dataset = DATASETS
-
+        dataset = sorted(DATASETS)
     if 'all' in model:
-        model = MODELS
+        model = sorted(MODELS)
     if eval_ensembles:
-        model = [m for m in MODELS if m.startswith('ensemble_')]
-    metric = SCORES if metric == 'all' else [metric]
+        model = sorted(m for m in MODELS if m.startswith('ensemble_'))
+    metric = sorted(SCORES) if metric == 'all' else [metric]
 
     if not dataset:
         click.echo('No datasets selected.', err=True)
@@ -67,9 +66,9 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
     Aggregate calculated performance metrics.
     """
     if 'all' in model:
-        model = MODELS
+        model = sorted(MODELS)
     if 'all' in dataset:
-        dataset = [d for d in DATASETS if d not in exclude_dataset]
+        dataset = sorted(d for d in DATASETS if d not in exclude_dataset)
 
     if not dataset:
         click.echo('No datasets selected.', err=True)
