@@ -144,8 +144,12 @@ def extract(models, datasets, skip_existing, parallelism):
     model = [(getattr(extractors, 'extract_' + m), m) for m in models]
     jobs = list(product(model, datasets))
 
+    def item_show_func(j):
+        if j:
+            return f'Model: {j[0][1]}, Dataset: {j[1]}'
+
     if parallelism == 1:
-        with click.progressbar(jobs, label='Running extrators') as progress:
+        with click.progressbar(jobs, label='Running extrators', item_show_func=item_show_func) as progress:
             for job in progress:
                 _extract_with_model_expand_args(job)
         return
