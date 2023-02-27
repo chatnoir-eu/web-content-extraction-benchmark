@@ -49,7 +49,7 @@ readability-lxml = "~0.8.1"
 resiliparse = "~0.13.7"
 trafilatura = "~1.4.1"
 
-# Boilernet dependencies
+# BoilerNet dependencies
 html5lib = "^1.1"
 numpy = "^1.24.2"
 tqdm = "^4.64.1"

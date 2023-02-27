@@ -15,7 +15,6 @@
 from collections import defaultdict
 import json
 import os
-import sys
 import warnings
 
 import numpy as np
@@ -25,14 +24,10 @@ import nltk
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
-FILE_PATH = os.path.abspath(__file__)
-PROJECT_ROOT_PATH = os.path.dirname(os.path.dirname(FILE_PATH))
-BOILERNET_DATA_PATH = os.path.join(PROJECT_ROOT_PATH, 'boilernet_data')
+from .net.preprocess import get_feature_vector, get_leaves, process
 
-sys.path.append(os.path.join(PROJECT_ROOT_PATH, 'boilernet', 'net'))
-# noinspection PyUnresolvedReferences
-from preprocess import get_feature_vector, get_leaves, process
 
+BOILERNET_ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 
 _model = None
 _word_map = None
@@ -42,11 +37,11 @@ _tag_map = None
 def load_model():
     global _model, _word_map, _tag_map
     if not _model:
-        _model = tf.keras.models.load_model(os.path.join(BOILERNET_DATA_PATH, 'model.h5'))
+        _model = tf.keras.models.load_model(os.path.join(BOILERNET_ROOT_PATH, 'model.h5'))
         nltk.download('punkt', quiet=True)
-        with open(os.path.join(BOILERNET_DATA_PATH, 'words.json')) as f:
+        with open(os.path.join(BOILERNET_ROOT_PATH, 'words.json')) as f:
             _word_map = json.load(f)
-        with open(os.path.join(BOILERNET_DATA_PATH, 'tags.json')) as f:
+        with open(os.path.join(BOILERNET_ROOT_PATH, 'tags.json')) as f:
             _tag_map = json.load(f)
     return _model, _word_map, _tag_map
 
@@ -65,7 +60,7 @@ def extract(html):
 
     inputs = [get_feature_vector(w, t, word_map, tag_map) for w, t, _ in processed]
     inputs = np.expand_dims(np.stack(inputs), 0)
-    predicted = np.around(model.predict(inputs))
+    predicted = np.around(model.predict(inputs, verbose=0))
 
     main_content = ''
     doc = BeautifulSoup(html, features='html5lib')
