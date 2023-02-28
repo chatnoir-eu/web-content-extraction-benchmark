@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ctypes
-import os
 from contextlib import redirect_stderr, redirect_stdout
 from functools import partial
 import io
@@ -21,7 +19,7 @@ from itertools import product
 import json
 import logging
 from multiprocessing import get_context
-from threading import Thread
+import os
 from typing import Any, Dict
 import warnings
 
@@ -107,30 +105,17 @@ def _extract_with_model(model, dataset, skip_existing=False, verbose=False):
                 continue
 
             out_data = dict(plaintext='', model=model_name)
+            try:
+                with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
+                    out_data['plaintext'] = model(in_data['html'], page_id=file_hash) or ''
 
-            def _model_wrapper():
-                try:
-                    with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
-                        out_data['plaintext'] = model(in_data['html'], page_id=file_hash) or ''
-
-                    if stdout.getvalue():
-                        logger.info(stdout.getvalue().strip())
-                    if stderr.getvalue():
-                        logger.warning(stderr.getvalue().strip())
-                except Exception as e:
-                    logger.warning(f'Error in model {model_name} while extracting {dataset}:{file_hash}:')
-                    logger.warning(str(e))
-
-            if model.__name__.startswith('extract_ensemble_'):
-                # Threading not needed for ensemble and only creates problems
-                _model_wrapper()
-            else:
-                t = Thread(target=_model_wrapper)
-                t.start()
-                t.join(timeout=30)
-                if t.is_alive():
-                    # Kill hanging thread
-                    ctypes.pythonapi.PyThreadState_SetAsyncExc(t.ident, ctypes.py_object(Exception))
+                if stdout.getvalue():
+                    logger.info(stdout.getvalue().strip())
+                if stderr.getvalue():
+                    logger.warning(stderr.getvalue().strip())
+            except Exception as e:
+                logger.warning(f'Error in model {model_name} while extracting {dataset} ({file_hash}):')
+                logger.warning(str(e))
 
             extracted[file_hash] = out_data
 
