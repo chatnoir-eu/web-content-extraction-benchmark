@@ -65,6 +65,9 @@ wceb extract -m readability -m resiliparse -d scrapinghub
 This will run only Readability and Resiliparse on the Scrapinghub dataset. Enter `wceb extract --help` for more information.
 
 
+**NOTE:** If you have a CUDA-capable GPU but limited graphics memory, you may want to run neural models with ``--parallelism=1``. This concerns the `boilernet` and `web2text` extractors (see below).
+
+
 ### Run Web2Text
 
 By default, Web2Text is excluded from the list, since it is extremely slow and requires a few extra setup steps.

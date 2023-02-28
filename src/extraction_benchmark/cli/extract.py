@@ -22,7 +22,7 @@ from extraction_benchmark.globals import *
 @click.option('-m', '--model', type=click.Choice(['all', *MODELS_ALL]), default=['all'],
               help='Extraction models ("all" does not include ensembles)', multiple=True)
 @click.option('--run-ensembles', is_flag=True, help='Run all ensembles (ignores --model)')
-@click.option('-e', '--exclude-model', type=click.Choice(MODELS_ALL), default=['web2text'],
+@click.option('-e', '--exclude-model', type=click.Choice(MODELS_ALL), default=['web2text'], show_default=True,
               help='Exclude models if "all" are selected.', multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[],
@@ -42,8 +42,7 @@ def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_
         model = sorted(m for m in MODELS_ALL if m.startswith('ensemble_') and m not in exclude_model)
     elif 'all' in model:
         model = sorted(m for m in MODELS if m not in exclude_model)
-        click.confirm('This will run ALL models. It may be wise to select only individual models with --model.\n'
-                      'Continue anyway?', abort=True)
+        click.confirm('This will run ALL models. Continue?', abort=True)
 
     if not os.path.isfile(MODEL_OUTPUTS_PATH):
         for m in model:
@@ -58,6 +57,10 @@ def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_
                    'Make sure that all datasets have been extracted correctly to a folder "datasets/raw" '
                    'under the current working directory.', err=True)
         return
+
+    if parallelism > 1 and ('web2text' in model or 'boilernet' in model):
+        click.echo('WARNING: Deep neural models selected. If you run into GPU memory issues, '
+                   'try running with --parallelism=1.', err=True)
 
     from extraction_benchmark import extract
     extract.extract(model, dataset, skip_existing, parallelism)

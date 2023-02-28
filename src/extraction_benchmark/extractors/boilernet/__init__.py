@@ -26,12 +26,16 @@ import tensorflow as tf
 
 from .net.preprocess import get_feature_vector, get_leaves, process
 
-
 BOILERNET_ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 
 _model = None
 _word_map = None
 _tag_map = None
+
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 
 
 def load_model():
