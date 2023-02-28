@@ -161,6 +161,11 @@ def extract_newspaper3k(html, **_):
     return article.text
 
 
+def extract_dragnet(html, **_):
+    from dragnet import extract_content
+    return extract_content(html, encoding='utf8')
+
+
 def _get_ensemble_model_list(best_only=False, weighted=False):
     def _ls():
         if best_only or weighted:
