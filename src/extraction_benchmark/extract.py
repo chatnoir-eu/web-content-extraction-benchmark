@@ -16,17 +16,21 @@ import ctypes
 from functools import partial
 from itertools import product
 import json
-import lz4.frame
+from logging import getLogger
 from multiprocessing import get_context
 from threading import Thread
 from typing import Any, Dict
 import warnings
 
 import click
+import lz4.frame
 
 from extraction_benchmark.dataset_readers import read_datasets, read_raw_dataset
 from extraction_benchmark.extractors import extractors
 from extraction_benchmark.paths import *
+
+
+logger = getLogger('wceb')
 
 
 def _dict_to_jsonl(filepath, lines_dict: Dict[str, Any]):
@@ -105,7 +109,8 @@ def _extract_with_model(model, dataset, skip_existing=False):
                 try:
                     out_data['plaintext'] = model(in_data['html'], page_id=file_hash) or ''
                 except Exception as e:
-                    click.echo(f'Error in model {model_name}: {str(e)}', err=True)
+                    logger.error(f'Error in model {model_name} while extracting {dataset}:{file_hash}:')
+                    logger.error(str(e))
 
             if model.__name__.startswith('extract_ensemble_'):
                 # Threading not needed for ensemble and only creates problems
