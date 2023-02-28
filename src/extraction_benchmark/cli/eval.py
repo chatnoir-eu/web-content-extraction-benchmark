@@ -29,7 +29,7 @@ def eval():
 @click.argument('metric', type=click.Choice(['all', *SCORES]))
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-m', '--model', type=click.Choice(['all', *MODELS]), default=['all'], multiple=True)
-@click.option('--eval-ensembles', is_flag=True)
+@click.option('--eval-ensembles', help='Evaluate only ensembles', is_flag=True)
 @click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
 def score(metric, dataset, model, eval_ensembles, parallelism):
     """
@@ -39,7 +39,7 @@ def score(metric, dataset, model, eval_ensembles, parallelism):
     if 'all' in dataset:
         dataset = sorted(DATASETS)
     if 'all' in model:
-        model = sorted(MODELS)
+        model = sorted(MODELS_ALL)
     if eval_ensembles:
         model = sorted(m for m in MODELS if m.startswith('ensemble_'))
     metric = sorted(SCORES) if metric == 'all' else [metric]
