@@ -43,3 +43,6 @@ venv.bak/
 .idea/
 .vscode-workspace/
 *.iml
+
+# Boilerpipe JVM crash dumps
+*.log
