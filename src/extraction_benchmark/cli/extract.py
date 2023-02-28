@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import logging
 
 import click
 from extraction_benchmark.globals import *
@@ -29,7 +30,8 @@ from extraction_benchmark.globals import *
               help='Exclude datasets if "all" are selected.', multiple=True)
 @click.option('-s', '--skip-existing', is_flag=True, help='Load existing answer and extract only new')
 @click.option('-p', '--parallelism', help='Number of threads to use', default=os.cpu_count())
-def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_existing, parallelism):
+@click.option('-v', '--verbose', help='Verbose output', is_flag=True)
+def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_existing, parallelism, verbose):
     """
     Run main content extractors on the datasets.
     """
@@ -63,7 +65,7 @@ def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_
                    'try running with --parallelism=1.', err=True)
 
     from extraction_benchmark import extract
-    extract.extract(model, dataset, skip_existing, parallelism)
+    extract.extract(model, dataset, skip_existing, parallelism, verbose)
 
 
 @click.command()

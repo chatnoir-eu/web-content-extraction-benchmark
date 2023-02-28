@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import ctypes
+import os
+from contextlib import redirect_stderr, redirect_stdout
 from functools import partial
+import io
 from itertools import product
 import json
-from logging import getLogger
+import logging
 from multiprocessing import get_context
 from threading import Thread
 from typing import Any, Dict
@@ -28,9 +31,6 @@ import lz4.frame
 from extraction_benchmark.dataset_readers import read_datasets, read_raw_dataset
 from extraction_benchmark.extractors import extractors
 from extraction_benchmark.paths import *
-
-
-logger = getLogger('wceb')
 
 
 def _dict_to_jsonl(filepath, lines_dict: Dict[str, Any]):
@@ -81,13 +81,16 @@ def extract_raw_html(datasets, page_id_whitelist=None):
                     f.write(lz4.frame.compress(val['html'].encode()))
 
 
-def _extract_with_model_expand_args(args, skip_existing=False):
-    _extract_with_model(*args, skip_existing=skip_existing)
+def _extract_with_model_expand_args(args, skip_existing=False, verbose=False):
+    _extract_with_model(*args, skip_existing=skip_existing, verbose=verbose)
 
 
-def _extract_with_model(model, dataset, skip_existing=False):
+def _extract_with_model(model, dataset, skip_existing=False, verbose=False):
     model, model_name = model
     out_path = os.path.join(MODEL_OUTPUTS_PATH, dataset, model_name + '.jsonl')
+
+    logger = logging.getLogger('wceb-extract')
+    logger.setLevel(logging.INFO if verbose else logging.ERROR)
 
     extracted = {}
     if skip_existing and os.path.isfile(out_path):
@@ -107,10 +110,16 @@ def _extract_with_model(model, dataset, skip_existing=False):
 
             def _model_wrapper():
                 try:
-                    out_data['plaintext'] = model(in_data['html'], page_id=file_hash) or ''
+                    with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
+                        out_data['plaintext'] = model(in_data['html'], page_id=file_hash) or ''
+
+                    if stdout.getvalue():
+                        logger.info(stdout.getvalue().strip())
+                    if stderr.getvalue():
+                        logger.warning(stderr.getvalue().strip())
                 except Exception as e:
-                    logger.error(f'Error in model {model_name} while extracting {dataset}:{file_hash}:')
-                    logger.error(str(e))
+                    logger.warning(f'Error in model {model_name} while extracting {dataset}:{file_hash}:')
+                    logger.warning(str(e))
 
             if model.__name__.startswith('extract_ensemble_'):
                 # Threading not needed for ensemble and only creates problems
@@ -131,7 +140,7 @@ def _extract_with_model(model, dataset, skip_existing=False):
     _dict_to_jsonl(out_path, extracted)
 
 
-def extract(models, datasets, skip_existing, parallelism):
+def extract(models, datasets, skip_existing, parallelism, verbose=False):
     """
     Extract datasets with the selected extraction models.
 
@@ -139,6 +148,7 @@ def extract(models, datasets, skip_existing, parallelism):
     :param datasets: list of dataset names under "datasets/raw"
     :param skip_existing: skip models for which an answer file exists already
     :param parallelism: number of parallel workers
+    :param verbose: log error information
     """
 
     model = [(getattr(extractors, 'extract_' + m), m) for m in models]
@@ -157,7 +167,7 @@ def extract(models, datasets, skip_existing, parallelism):
     with get_context('spawn').Pool(processes=parallelism) as pool:
         try:
             with click.progressbar(pool.imap_unordered(partial(_extract_with_model_expand_args,
-                                                               skip_existing=skip_existing), jobs),
+                                                               skip_existing=skip_existing, verbose=verbose), jobs),
                                    length=len(jobs), label='Running extrators') as progress:
                 for _ in progress:
                     pass
