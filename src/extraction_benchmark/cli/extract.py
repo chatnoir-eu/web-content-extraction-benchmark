@@ -46,7 +46,7 @@ def extract(model, run_ensembles, exclude_model, dataset, exclude_dataset, skip_
         model = sorted(m for m in MODELS if m not in exclude_model)
         click.confirm('This will run ALL models. Continue?', abort=True)
 
-    if not os.path.isfile(MODEL_OUTPUTS_PATH):
+    if not os.path.isdir(MODEL_OUTPUTS_PATH):
         for m in model:
             if m.startswith('ensemble_'):
                 raise click.UsageError('Model outputs need to be generated before ensemble can be run.')
