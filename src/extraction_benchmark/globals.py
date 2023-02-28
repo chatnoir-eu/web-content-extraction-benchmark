@@ -44,6 +44,7 @@ _MODEL_FRIENDLY_NAME_MAP = dict(
     boilerpipe='Boilerpipe',
     bte='BTE',
     dragnet='Dragnet',
+    extractnet='ExtractNet',
     go_domdistiller='DOM Distiller',
     goose3='Goose3',
     justext='jusText',

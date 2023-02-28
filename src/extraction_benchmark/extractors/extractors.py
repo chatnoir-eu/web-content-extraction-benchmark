@@ -166,6 +166,11 @@ def extract_dragnet(html, **_):
     return extract_content(html, encoding='utf8')
 
 
+def extract_extractnet(html, **_):
+    from extractnet import Extractor
+    return Extractor().extract(html, encoding='utf8').get('content', '')
+
+
 def _get_ensemble_model_list(best_only=False, weighted=False):
     def _ls():
         if best_only or weighted:
