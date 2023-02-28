@@ -859,6 +859,52 @@ type = "file"
 url = "third-party/dragnet-2.0.4-cp310-cp310-linux_x86_64.whl"
 
 [[package]]
+name = "dragnet"
+version = "2.0.4"
+description = "Extract the main article content (and optionally comments) from a web page"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "dragnet-2.0.4-cp311-cp311-linux_x86_64.whl", hash = "sha256:a0e1daa4db0d2f6aac050a9fb4b4bcd8f78d5b416c46833e3c5af8f4bfd4c692"},
+]
+
+[package.dependencies]
+Cython = ">=0.21.1"
+ftfy = ">=4.1.0,<5.0.0"
+lxml = "*"
+numpy = ">=1.11.0"
+scikit-learn = ">=0.15.2"
+scipy = ">=0.17.0"
+
+[package.source]
+type = "file"
+url = "third-party/dragnet-2.0.4-cp311-cp311-linux_x86_64.whl"
+
+[[package]]
+name = "dragnet"
+version = "2.0.4"
+description = "Extract the main article content (and optionally comments) from a web page"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "dragnet-2.0.4-cp39-cp39-linux_x86_64.whl", hash = "sha256:b1a262957c4a0391a14ef1d752fc81f08ad14a46cdde6771941a13fca31db72d"},
+]
+
+[package.dependencies]
+Cython = ">=0.21.1"
+ftfy = ">=4.1.0,<5.0.0"
+lxml = "*"
+numpy = ">=1.11.0"
+scikit-learn = ">=0.15.2"
+scipy = ">=0.17.0"
+
+[package.source]
+type = "file"
+url = "third-party/dragnet-2.0.4-cp39-cp39-linux_x86_64.whl"
+
+[[package]]
 name = "elastic-transport"
 version = "8.4.0"
 description = "Transport classes and utilities shared among Python Elastic client libraries"
@@ -936,6 +982,64 @@ tld = "0.12.6"
 [package.source]
 type = "file"
 url = "third-party/extractnet-2.0.7-cp310-cp310-linux_x86_64.whl"
+
+[[package]]
+name = "extractnet"
+version = "2.0.7"
+description = "Extract the main article content (and optionally comments) from a web page"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "extractnet-2.0.7-cp311-cp311-linux_x86_64.whl", hash = "sha256:37192e7cfaf82c63d8bc04896580939f3143bf3bff2fce47a2c45bb58d7332ec"},
+]
+
+[package.dependencies]
+beautifulsoup4 = "4.9.3"
+cchardet = ">=2.1.7"
+dateparser = ">=1.1.0"
+ftfy = ">=4.1.0,<5.0.0"
+htmldate = "*"
+joblib = ">=1.1.0"
+numpy = ">=1.19.0"
+onnxruntime = ">=1.9.0"
+scikit-learn = ">=0.22.0"
+scipy = ">=0.17.0"
+sklearn-crfsuite = "0.3.6"
+tld = "0.12.6"
+
+[package.source]
+type = "file"
+url = "third-party/extractnet-2.0.7-cp311-cp311-linux_x86_64.whl"
+
+[[package]]
+name = "extractnet"
+version = "2.0.7"
+description = "Extract the main article content (and optionally comments) from a web page"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "extractnet-2.0.7-cp39-cp39-linux_x86_64.whl", hash = "sha256:5427daed1128800d44927498d36a3d8e7b17ad6f03501f0ac61fce651273fac0"},
+]
+
+[package.dependencies]
+beautifulsoup4 = "4.9.3"
+cchardet = ">=2.1.7"
+dateparser = ">=1.1.0"
+ftfy = ">=4.1.0,<5.0.0"
+htmldate = "*"
+joblib = ">=1.1.0"
+numpy = ">=1.19.0"
+onnxruntime = ">=1.9.0"
+scikit-learn = ">=0.22.0"
+scipy = ">=0.17.0"
+sklearn-crfsuite = "0.3.6"
+tld = "0.12.6"
+
+[package.source]
+type = "file"
+url = "third-party/extractnet-2.0.7-cp39-cp39-linux_x86_64.whl"
 
 [[package]]
 name = "fastwarc"
@@ -1390,6 +1494,45 @@ files = [
     {file = "idna-3.4-py3-none-any.whl", hash = "sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2"},
     {file = "idna-3.4.tar.gz", hash = "sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4"},
 ]
+
+[[package]]
+name = "importlib-metadata"
+version = "6.0.0"
+description = "Read metadata from Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "importlib_metadata-6.0.0-py3-none-any.whl", hash = "sha256:7efb448ec9a5e313a57655d35aa54cd3e01b7e1fbcf72dce1bf06119420f5bad"},
+    {file = "importlib_metadata-6.0.0.tar.gz", hash = "sha256:e354bedeb60efa6affdcc8ae121b73544a7aa74156d047311948f6d711cd378d"},
+]
+
+[package.dependencies]
+zipp = ">=0.5"
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+perf = ["ipython"]
+testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)"]
+
+[[package]]
+name = "importlib-resources"
+version = "5.12.0"
+description = "Read resources from Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "importlib_resources-5.12.0-py3-none-any.whl", hash = "sha256:7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a"},
+    {file = "importlib_resources-5.12.0.tar.gz", hash = "sha256:4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6"},
+]
+
+[package.dependencies]
+zipp = {version = ">=3.1.0", markers = "python_version < \"3.10\""}
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+testing = ["flake8 (<5)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
 
 [[package]]
 name = "incremental"
@@ -1966,6 +2109,9 @@ files = [
     {file = "Markdown-3.4.1.tar.gz", hash = "sha256:3b809086bb6efad416156e00a0da66fe47618a5d6918dd688f53f40c8e4cfeff"},
 ]
 
+[package.dependencies]
+importlib-metadata = {version = ">=4.4", markers = "python_version < \"3.10\""}
+
 [package.extras]
 testing = ["coverage", "pyyaml"]
 
@@ -2084,6 +2230,7 @@ files = [
 contourpy = ">=1.0.1"
 cycler = ">=0.10"
 fonttools = ">=4.22.0"
+importlib-resources = {version = ">=3.2.0", markers = "python_version < \"3.10\""}
 kiwisolver = ">=1.0.1"
 numpy = ">=1.20"
 packaging = ">=20.0"
@@ -2384,7 +2531,11 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.21.0", markers = "python_version >= \"3.10\""}
+numpy = [
+    {version = ">=1.20.3", markers = "python_version < \"3.10\""},
+    {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
+    {version = ">=1.23.2", markers = "python_version >= \"3.11\""},
+]
 python-dateutil = ">=2.8.1"
 pytz = ">=2020.1"
 
@@ -4132,6 +4283,22 @@ files = [
 ]
 
 [[package]]
+name = "zipp"
+version = "3.15.0"
+description = "Backport of pathlib-compatible object wrapper for zip files"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "zipp-3.15.0-py3-none-any.whl", hash = "sha256:48904fc76a60e542af151aded95726c1a5c34ed43ab4134b597665c86d7ad556"},
+    {file = "zipp-3.15.0.tar.gz", hash = "sha256:112929ad649da941c23de50f356a2b5570c954b65150642bccdd66bf194d224b"},
+]
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
+
+[[package]]
 name = "zope-interface"
 version = "5.5.2"
 description = "Interfaces for Python"
@@ -4187,5 +4354,5 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.10,<3.11"
-content-hash = "e72bdd96a429d00468377bdf04a39d2aaa9b0f29eee45c422ff43abe79066538"
+python-versions = ">=3.9,<3.12"
+content-hash = "87f432c33c9f3b25aa96bd764aecc92f54927989ddcd4cd9ace59593a7b1c4b4"

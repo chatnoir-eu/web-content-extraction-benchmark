@@ -22,7 +22,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.11"
+python = ">=3.9,<3.12"
 awscli = ">=1.27.78"     # We don't need this directly, but need to fix Poetry's slow dependency resolution
 click = "^8.1.3"
 cython = "^0.29.33"
@@ -48,11 +48,17 @@ newspaper3k = "~0.2.8"
 readability-lxml = "~0.8.1"
 resiliparse = "~0.13.7"
 trafilatura = "~1.4.1"
-# PyPi version of Dragnet is outdated and build from upstream Git does
-# not work due improperly declared build dependency.
-dragnet = {path = "third-party/dragnet-2.0.4-cp310-cp310-linux_x86_64.whl"}
-# Upstream ExtractNet depends on incompatible htmldate version
-extractnet = {path = "third-party/extractnet-2.0.7-cp310-cp310-linux_x86_64.whl"}
+# Install local wheels for Dragnet and ExtractNet, whose upstream versions have incompatible dependencies
+dragnet = [
+    {path = "third-party/dragnet-2.0.4-cp39-cp39-linux_x86_64.whl", python = "~3.9"},
+    {path = "third-party/dragnet-2.0.4-cp310-cp310-linux_x86_64.whl", python = "~3.10"},
+    {path = "third-party/dragnet-2.0.4-cp311-cp311-linux_x86_64.whl", python = "~3.11"},
+]
+extractnet = [
+    {path = "third-party/extractnet-2.0.7-cp39-cp39-linux_x86_64.whl", python = "~3.9"},
+    {path = "third-party/extractnet-2.0.7-cp310-cp310-linux_x86_64.whl", python = "~3.10"},
+    {path = "third-party/extractnet-2.0.7-cp311-cp311-linux_x86_64.whl", python = "~3.11"},
+]
 
 # BoilerNet dependencies
 html5lib = "^1.1"
