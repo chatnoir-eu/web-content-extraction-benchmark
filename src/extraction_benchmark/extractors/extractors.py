@@ -177,7 +177,7 @@ def _get_ensemble_model_list(best_only=False, weighted=False):
             return [
                 (extract_goose3, 2 if weighted else 1),
                 (extract_readability, 2 if weighted else 1),
-                (extract_trafilatura, 1),
+                (extract_trafilatura, 2 if weighted else 1),
                 (extract_go_domdistiller, 1),
                 (extract_resiliparse, 1),
                 (extract_web2text, 1),
@@ -194,19 +194,19 @@ def _get_ensemble_model_list(best_only=False, weighted=False):
 def extract_ensemble_majority(html, page_id):
     from extraction_benchmark.extractors import ensemble
     models, weights = _get_ensemble_model_list()
-    return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .75))
+    return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .66))
 
 
 def extract_ensemble_best(html, page_id):
     from extraction_benchmark.extractors import ensemble
     models, weights = _get_ensemble_model_list(best_only=True)
-    return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .75))
+    return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .66))
 
 
 def extract_ensemble_weighted(html, page_id):
     from extraction_benchmark.extractors import ensemble
     models, weights = _get_ensemble_model_list(best_only=True, weighted=True)
-    return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .75))
+    return ensemble.extract_majority_vote(html, page_id, models, weights, int(len(models) * .66))
 
 
 def list_extractors(names_only=True, include_ensembles=False):
