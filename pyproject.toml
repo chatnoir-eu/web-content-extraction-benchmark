@@ -18,7 +18,10 @@ packages = [
     {include = "extraction_benchmark", from = "src"}
 ]
 include = [
-    "src/extractors/go_domdistiller/go_domdistiller_cli"
+    "src/extraction_benchmark/extractors/go_domdistiller/go_domdistiller_cli",
+    "src/extraction_benchmark/extractors/boilernet/model.h5",
+    "src/extraction_benchmark/extractors/boilernet/words.json",
+    "src/extraction_benchmark/extractors/boilernet/tags.json",
 ]
 
 [tool.poetry.dependencies]

@@ -28,3 +28,5 @@ MODEL_OUTPUTS_PATH = os.path.join(OUTPUTS_PATH, 'model-outputs')
 METRICS_PATH = os.path.join(OUTPUTS_PATH, 'metrics-computed')
 METRICS_AGG_PATH = os.path.join(METRICS_PATH, '_aggregated')
 METRICS_COMPLEXITY_PATH = os.path.join(METRICS_PATH, '_complexity')
+
+THIRD_PARTY_PATH = os.path.join(ROOT_PATH, 'third-party')

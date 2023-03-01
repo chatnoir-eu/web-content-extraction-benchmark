@@ -18,8 +18,9 @@ import os
 import subprocess
 import tempfile
 
-MODULE_PATH = os.path.dirname(__file__)
-WEB2TEXT_BASEPATH = os.path.join(os.getcwd(), 'third-party', 'web2text')
+from extraction_benchmark.paths import THIRD_PARTY_PATH
+
+WEB2TEXT_BASEPATH = os.path.join(THIRD_PARTY_PATH, 'web2text')
 WEB2TEXT_PYTHONPATH = os.path.join(WEB2TEXT_BASEPATH, 'src', 'main', 'python')
 WEB2TEXT_VENV = os.path.join(WEB2TEXT_BASEPATH, 'venv')
 
@@ -36,7 +37,7 @@ if not os.path.isdir(WEB2TEXT_VENV):
 
 
 def extract(html):
-    scala_cmd = ['scala', '-cp', os.path.join(MODULE_PATH, 'web2text.jar')]
+    scala_cmd = ['scala', '-cp', os.path.join(THIRD_PARTY_PATH, 'web2text.jar')]
     python_cmd = ['python', os.path.join(WEB2TEXT_PYTHONPATH, 'main.py')]
     hash_id = hashlib.sha256(html.encode()).hexdigest()
 
