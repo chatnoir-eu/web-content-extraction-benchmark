@@ -36,7 +36,7 @@ else:
 
 _MODEL_FRIENDLY_NAME_MAP = dict(
     ensemble_best='(Best only)',
-    ensemble_weighted='(Best weigh.)',
+    ensemble_weighted='(Best weighted)',
     ensemble_majority='(Majority all)',
 
     bs4='BS4',

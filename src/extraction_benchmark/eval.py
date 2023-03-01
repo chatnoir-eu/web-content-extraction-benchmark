@@ -16,12 +16,12 @@ from multiprocessing import get_context
 from itertools import pairwise, product
 
 from Levenshtein import ratio as levenshtein_ratio
-import matplotlib.pyplot as plt
 import pandas as pd
 from rouge_score import rouge_scorer, tokenizers
 from tqdm import tqdm
 
 from extraction_benchmark.globals import *
+from extraction_benchmark import plt
 from extraction_benchmark.util import jsonl_to_dict, read_jsonl, tokenize_ws
 
 
@@ -354,4 +354,3 @@ def aggregate_scores(score_name, models, datasets, complexity):
         (len(barplot_data), 1),
         title_bar,
         score_name)
-

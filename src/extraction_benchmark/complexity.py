@@ -18,7 +18,6 @@ from multiprocessing import Pool
 import re
 
 import click
-import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
@@ -29,6 +28,7 @@ from resiliparse.parse.html import HTMLTree
 
 from extraction_benchmark.dataset_readers import read_datasets
 from extraction_benchmark.globals import *
+from extraction_benchmark import plt
 from extraction_benchmark.util import tokenize_words
 
 
