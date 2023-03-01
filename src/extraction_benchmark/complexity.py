@@ -29,13 +29,7 @@ from resiliparse.parse.html import HTMLTree
 
 from extraction_benchmark.dataset_readers import read_datasets
 from extraction_benchmark.globals import *
-
-_TOKEN_RE = re.compile(r'\w+', flags=re.UNICODE)
-_WS_RE = re.compile(r'\s+', flags=re.UNICODE | re.MULTILINE)
-
-
-def _tokenize(text):
-    return _TOKEN_RE.findall(text)
+from extraction_benchmark.util import tokenize_words
 
 
 def calculate(datasets):
@@ -55,7 +49,7 @@ def calculate(datasets):
             tokens_truth = {}
             tokens_src = {}
             for h, truth in read_datasets([ds], True):
-                tokens_truth[h] = len(_tokenize(truth['plaintext']))
+                tokens_truth[h] = len(tokenize_words(truth['plaintext']))
             for h, src in read_datasets([ds], False):
                 if h not in tokens_truth:
                     continue
@@ -63,7 +57,7 @@ def calculate(datasets):
                 tree = HTMLTree.parse(src['html'])
                 for e in tree.body.query_selector_all('script, style'):
                     e.decompose()
-                tokens_src[h] = len(_tokenize(tree.body.text))
+                tokens_src[h] = len(tokenize_words(tree.body.text))
 
             tokens_truth = pd.DataFrame.from_dict(tokens_truth, orient='index')
             tokens_src = pd.DataFrame.from_dict(tokens_src, orient='index')
@@ -88,6 +82,9 @@ def calculate(datasets):
     complexity_total.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity.csv'))
 
     click.echo(f'Complexity scores written to "{METRICS_COMPLEXITY_PATH}".')
+
+
+_WS_RE = re.compile(r'\s+', flags=re.UNICODE | re.MULTILINE)
 
 
 def extract_html_features(html):
@@ -117,7 +114,7 @@ def extract_html_features(html):
         features['strong'] = len(tree.body.query_selector_all('strong')) / n_tags
         features['em'] = len(tree.body.query_selector_all('em')) / n_tags
 
-    features['html_to_non_html'] = n_tags / len(_TOKEN_RE.findall(text))
+    features['html_to_non_html'] = n_tags / len(tokenize_words(text))
 
     return features
 

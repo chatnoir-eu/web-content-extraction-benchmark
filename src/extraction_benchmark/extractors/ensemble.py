@@ -13,25 +13,16 @@
 # limitations under the License.
 
 from collections import defaultdict
-import json
-import re
 
 from resiliparse.extract.html2text import extract_plain_text
 from resiliparse.parse.html import HTMLTree
 
 from extraction_benchmark.paths import *
+from extraction_benchmark.util import read_jsonl, tokenize_ws
 
 
 _MODEL_ANSWERS = defaultdict(dict)
-_GROUND_TRUTH = {}
 _ENSEMBLE_MODELS = {}
-
-_TOKEN_RE = re.compile(r'\s+', flags=re.UNICODE | re.MULTILINE)
-_WS_RE = _TOKEN_RE
-
-
-def normalize_text(text):
-    return ' '.join(_TOKEN_RE.split(text.strip()))
 
 
 def _load_model_answers(input_models):
@@ -39,25 +30,11 @@ def _load_model_answers(input_models):
         if m in _MODEL_ANSWERS:
             continue
         for ds in os.listdir(MODEL_OUTPUTS_PATH):
-            in_file = os.path.join(MODEL_OUTPUTS_PATH, ds, m, m + '.json')
+            in_file = os.path.join(MODEL_OUTPUTS_PATH, ds, m + '.jsonl')
             if not os.path.isfile(in_file):
                 continue
-            answers = json.load(open(in_file, 'r'))
-            for k in answers:
-                _MODEL_ANSWERS[m][k] = normalize_text(answers[k]['articleBody'] or '')
-
-
-def _load_ground_truth():
-    if _GROUND_TRUTH:
-        return
-
-    for ds in os.listdir(DATASET_COMBINED_TRUTH_PATH):
-        in_file = os.path.join(DATASET_COMBINED_TRUTH_PATH, f'{ds}.json')
-        if not os.path.isfile(in_file):
-            continue
-        truth = json.load(open(in_file, 'r'))
-        for k in truth:
-            _GROUND_TRUTH[k] = normalize_text(truth[k]['articleBody'] or '')
+            for answer in read_jsonl(in_file):
+                _MODEL_ANSWERS[m][answer['page_id']] = ' '.join(tokenize_ws(answer['plaintext']))
 
 
 def pad_str_zero(s, n):
@@ -75,7 +52,7 @@ def extract_majority_vote(html, page_id, input_models, model_weights, vote_thres
     text = pad_str_zero(extract_plain_text(
         tree, main_content=False, preserve_formatting=False, list_bullets=False,
         links=False, alt_texts=False, noscript=False, form_fields=False), ngram_size - 1)
-    tokens = _TOKEN_RE.split(text.strip())
+    tokens = tokenize_ws(text)
     token_votes = [0] * len(tokens)
 
     for ti in range(ngram_size - 1, len(tokens) - ngram_size + 1):

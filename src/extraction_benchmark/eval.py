@@ -12,29 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from Levenshtein import ratio as levenshtein_ratio
 from multiprocessing import get_context
-import re
 from itertools import pairwise, product
 
-import click
 from rouge_score import rouge_scorer, tokenizers
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 
 from extraction_benchmark.globals import *
-
-_TOKEN_RE = re.compile(r'\s+', flags=re.UNICODE | re.MULTILINE)
+from extraction_benchmark.util import jsonl_to_dict, read_jsonl, tokenize_ws
 
 
 class Tokenizer(tokenizers.Tokenizer):
     def tokenize(self, text):
-        text = text.strip()
-        if not text:
-            return []
-        return _TOKEN_RE.split(text)
+        return tokenize_ws(text)
 
 
 def rouge_eval(key, model, dataset, target, pred):
@@ -74,19 +67,6 @@ def levenshtein_eval(key, model, dataset, target, pred):
         scorer='levenshtein',
         dataset=dataset
     )]
-
-
-def read_jsonl(file):
-    with open(file, 'r') as f:
-        for line in f:
-            yield json.loads(line)
-
-
-def jsonl_to_dict(file):
-    loaded = {}
-    for j in read_jsonl(file):
-        loaded[j['page_id']] = {k: v for k, v in j.items() if k != 'page_id'}
-    return loaded
 
 
 def _eval_expand_args(args):
