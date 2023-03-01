@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from Levenshtein import ratio as levenshtein_ratio
 from multiprocessing import get_context
 from itertools import pairwise, product
 
-from rouge_score import rouge_scorer, tokenizers
+from Levenshtein import ratio as levenshtein_ratio
 import matplotlib.pyplot as plt
 import pandas as pd
+from rouge_score import rouge_scorer, tokenizers
 from tqdm import tqdm
 
 from extraction_benchmark.globals import *
@@ -140,7 +140,7 @@ def _map_axis_tick_labels(axis):
         elif t.get_text() in ['bs4', 'html_text', 'inscriptis', 'lxml_cleaner', 'xpath_text']:
             t.set_color('gray')
 
-        t.set_text(MODELS.get(t.get_text(), t.get_text()))
+        t.set_text(MODELS_ALL.get(t.get_text(), t.get_text()))
 
     axis.set_ticks(range(len(ticklabels)))
     axis.set_ticklabels(ticklabels)
@@ -306,7 +306,7 @@ def aggregate_scores(score_name, models, datasets, complexity):
 
         # Remap series to friendly names
         def _remap_series_names(s):
-            s.index = pd.Index(data=[MODELS.get(n, n) for n in s.index.values], name='Model')
+            s.index = pd.Index(data=[MODELS_ALL.get(n, n) for n in s.index.values], name='Model')
             return s
 
         out_styler = out_df.style.apply(_highlight_max_per_ds).format(precision=3)
