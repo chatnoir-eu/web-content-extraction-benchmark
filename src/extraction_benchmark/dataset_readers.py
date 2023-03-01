@@ -19,7 +19,6 @@ import gzip
 import hashlib
 from itertools import chain
 import json
-import lz4.frame
 import os
 import re
 from typing import Any, Dict, Iterable, Optional, Tuple
@@ -116,7 +115,7 @@ class DatasetReader(ABC):
     def _read_file(path, fixed_encoding=None):
         """
         Helper method for reading a file, detecting its encoding and returning the contents as UTF-8 string.
-        If the input file is GZip- or LZ4-compressed, it will be decompressed automatically.
+        If the input file is GZip-compressed, it will be decompressed automatically.
 
         :param path: file path
         :param fixed_encoding: use this fixed encoding instead of trying to detect if from the file
@@ -124,9 +123,7 @@ class DatasetReader(ABC):
         """
         with open(path, 'rb') as f:
             file_bytes = f.read()
-            if path.endswith('.lz4'):
-                file_bytes = lz4.frame.decompress(file_bytes)
-            elif path.endswith('.gz'):
+            if path.endswith('.gz'):
                 file_bytes = gzip.decompress(file_bytes)
             if fixed_encoding:
                 enc = fixed_encoding
@@ -335,8 +332,8 @@ class CombinedDatasetReader(DatasetReader):
             return
 
         for ds in self.subsets:
-            for filename in glob.glob(os.path.join(DATASET_COMBINED_HTML_PATH, ds, '*.html.lz4')):
-                page_id = os.path.splitext(os.path.splitext(os.path.basename(filename))[0])[0]
+            for filename in glob.glob(os.path.join(DATASET_COMBINED_HTML_PATH, ds, '*.html')):
+                page_id = os.path.splitext(os.path.basename(filename))[0]
                 yield page_id, self._build_dict(ds, page_id, self._read_file(filename, 'utf-8'))
 
     def dataset_size(self) -> Optional[int]:

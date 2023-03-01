@@ -24,7 +24,6 @@ from typing import Any, Dict
 import warnings
 
 import click
-import lz4.frame
 
 from extraction_benchmark.dataset_readers import read_datasets, read_raw_dataset
 from extraction_benchmark.extractors import extractors
@@ -75,8 +74,8 @@ def extract_raw_html(datasets, page_id_whitelist=None):
                     continue
                 if not val.get('html'):
                     continue
-                with open(os.path.join(out_dir, page_id + '.html.lz4'), 'wb') as f:
-                    f.write(lz4.frame.compress(val['html'].encode()))
+                with open(os.path.join(out_dir, page_id + '.html'), 'w') as f:
+                    f.write(val['html'])
 
 
 def _extract_with_model_expand_args(args, skip_existing=False, verbose=False):
