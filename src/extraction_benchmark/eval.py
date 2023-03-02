@@ -196,6 +196,111 @@ def _sort_vectors(*vals, reverse=True):
     return zip(*sorted(zip(*vals), key=lambda x: x[0], reverse=reverse))
 
 
+def _write_agg_df_to_files(df, score_name, complexity, main_score_col):
+    file_suffix = score_name
+    if complexity != 'all':
+        file_suffix += f'_complexity_{complexity}'
+
+    out_df_max = df.groupby(['dataset']).max()
+
+    def _highlight_max_per_ds(s):
+        def _is_max(idx, val):
+            return val >= out_df_max[s.name][idx[1]]
+
+        return ['font-weight: bold' if _is_max(idx, val) else '' for idx, val in s.items()]
+
+    # Remap series to friendly names
+    def _remap_series_names(s):
+        s.index = pd.Index(data=[MODELS_ALL.get(n, n) for n in s.index.values], name='Model')
+        return s
+
+    os.makedirs(os.path.join(METRICS_PATH, score_name), exist_ok=True)
+    out_styler = df.style.apply(_highlight_max_per_ds).format(precision=3)
+    out_styler.to_excel(os.path.join(METRICS_PATH, score_name, f'{file_suffix}.xlsx'))
+
+    # Compile reduced versions of the table with global averages
+    for series in '_micro', '_macro':
+        out_df_reduced = df.loc[:, series, :].sort_values(f'mean_{main_score_col}', ascending=False)
+        out_df_reduced.name = 'Model'
+        if score_name == 'rouge':
+            out_df_reduced.columns = ['Mean Precision', 'Mean Recall', 'Mean F1',
+                                      'Median Precision', 'Median Recall', 'Median F1']
+        else:
+            out_df_reduced.columns = ['Mean Distance', 'Median Distance']
+        out_df_reduced = out_df_reduced.apply(_remap_series_names)
+
+        # XLSX
+        out_styler = out_df_reduced.style.highlight_max(props='font-weight: bold').format(precision=3)
+        out_styler.to_excel(os.path.join(METRICS_PATH, score_name,
+                                         f'{file_suffix}{series}.xlsx'), float_format='%.3f')
+
+        # LaTeX
+        if score_name == 'rouge':
+            out_df_reduced.columns = ['Mean Precision', 'Mean Recall', 'Mean $F_1$',
+                                      'Median Precision', 'Median Recall', 'Median $F_1$']
+        out_styler = out_df_reduced.style.highlight_max(props=r'bf:').format(precision=3)
+        out_styler.to_latex(os.path.join(METRICS_PATH, score_name, f'{file_suffix}{series}.tex'))
+
+
+def _agg_model_at_complexity(complexity, in_df, score_name, score_cols, main_score_col):
+    models = sorted(in_df.index.unique('model'))
+
+    out_df = pd.DataFrame(columns=['model', 'dataset',
+                                   *[f'mean_{c}' for c in score_cols],
+                                   *[f'median_{c}' for c in score_cols]])
+    out_df.set_index(['model', 'dataset'], inplace=True)
+
+    model_f1_scores = []
+    model_f1_medians = []
+    model_f1_means = []
+    model_f1_lower_err = []
+    model_f1_upper_err = []
+    for m in models:
+        model_df = in_df.loc[m, :, :].drop(columns=['scorer'])
+
+        model_ds_group = model_df.groupby('dataset')
+        mean_ds = model_ds_group.mean()
+        median_ds = model_ds_group.median()
+
+        ds_stats = pd.concat([mean_ds, median_ds], axis=1)
+
+        mean_micro = model_df.mean()
+        median_micro = model_df.median()
+        micro = pd.concat([mean_micro, median_micro]).to_frame('_micro').T
+        micro.index.name = 'dataset'
+        ds_stats = pd.concat([ds_stats, micro])
+
+        mean_macro = mean_ds.mean()
+        median_macro = median_ds.median()
+        macro = pd.concat([mean_macro, median_macro]).to_frame('_macro').T
+        macro.index.name = 'dataset'
+        ds_stats = pd.concat([ds_stats, macro])
+
+        ds_stats.columns = out_df.columns
+
+        ds_stats['model'] = m
+        ds_stats = ds_stats.reset_index().set_index(['model', 'dataset'])
+
+        out_df = pd.concat([out_df, ds_stats.round(3)])
+
+        model_f1_scores.append(model_df[main_score_col])
+        model_f1_medians.append(median_micro[main_score_col])
+
+        model_f1_means.append(mean_micro[main_score_col])
+        model_f1_lower_err.append(abs(mean_micro[main_score_col] - model_df[main_score_col].quantile(0.25)))
+        model_f1_upper_err.append(abs(model_df[main_score_col].quantile(0.75) - mean_micro[main_score_col]))
+
+    _write_agg_df_to_files(out_df, score_name, complexity, main_score_col)
+
+    _, f1, labels = _sort_vectors(model_f1_medians, model_f1_scores, models)
+    boxplot_data = [f1, labels, f'Complexity: {complexity.capitalize()}']
+
+    f1, low, high, labels = _sort_vectors(model_f1_means, model_f1_lower_err, model_f1_upper_err, models)
+    barplot_data = [f1, low, high, labels, f'Complexity: {complexity.capitalize()}']
+
+    return boxplot_data, barplot_data
+
+
 def aggregate_scores(score_name, models, datasets, complexity):
     """
     Aggregate evaluation statistics.
@@ -234,108 +339,17 @@ def aggregate_scores(score_name, models, datasets, complexity):
                 df = pd.read_csv(p, index_col=['model', 'dataset'])
                 if compl_range[comp] is not None:
                     # Filter input dataframe to include only pages within chosen complexity range
-                    c = pd.read_csv(os.path.join(METRICS_COMPLEXITY_PATH, d, f'{d}_complexity.csv'), index_col='hash_key')
+                    c = pd.read_csv(os.path.join(METRICS_COMPLEXITY_PATH, d, f'{d}_complexity.csv'),
+                                    index_col='hash_key')
                     c = c[(c['complexity'] >= compl_range[comp][0]) & (c['complexity'] <= compl_range[comp][1])]
                     df = df[df['hash_key'].isin(c.index)]
 
                 df.set_index(['hash_key'], append=True, inplace=True)
                 in_df = pd.concat([in_df, df])
 
-            models = sorted(in_df.index.unique('model'))
-
-            os.makedirs(METRICS_PATH, exist_ok=True)
-            out_df = pd.DataFrame(columns=['model', 'dataset',
-                                           *[f'mean_{c}' for c in score_cols],
-                                           *[f'median_{c}' for c in score_cols]])
-            out_df.set_index(['model', 'dataset'], inplace=True)
-
-            model_f1_scores = []
-            model_f1_medians = []
-            model_f1_means = []
-            model_f1_lower_err = []
-            model_f1_upper_err = []
-            for m in models:
-                model_df = in_df.loc[m, :, :].drop(columns=['scorer'])
-
-                model_ds_group = model_df.groupby('dataset')
-                mean_ds = model_ds_group.mean()
-                median_ds = model_ds_group.median()
-
-                ds_stats = pd.concat([mean_ds, median_ds], axis=1)
-
-                mean_micro = model_df.mean()
-                median_micro = model_df.median()
-                micro = pd.concat([mean_micro, median_micro]).to_frame('_micro').T
-                micro.index.name = 'dataset'
-                ds_stats = pd.concat([ds_stats, micro])
-
-                mean_macro = mean_ds.mean()
-                median_macro = median_ds.median()
-                macro = pd.concat([mean_macro, median_macro]).to_frame('_macro').T
-                macro.index.name = 'dataset'
-                ds_stats = pd.concat([ds_stats, macro])
-
-                ds_stats.columns = out_df.columns
-
-                ds_stats['model'] = m
-                ds_stats = ds_stats.reset_index().set_index(['model', 'dataset'])
-
-                out_df = pd.concat([out_df, ds_stats.round(3)])
-
-                model_f1_scores.append(model_df[main_score_col])
-                model_f1_medians.append(median_micro[main_score_col])
-
-                model_f1_means.append(mean_micro[main_score_col])
-                model_f1_lower_err.append(abs(mean_micro[main_score_col] - model_df[main_score_col].quantile(0.25)))
-                model_f1_upper_err.append(abs(model_df[main_score_col].quantile(0.75) - mean_micro[main_score_col]))
-
-            _, f1, labels = _sort_vectors(model_f1_medians, model_f1_scores, models)
-            boxplot_data.append([f1, labels, f'Complexity: {comp.capitalize()}'])
-
-            f1, low, high, labels = _sort_vectors(model_f1_means, model_f1_lower_err, model_f1_upper_err, models)
-            barplot_data.append([f1, low, high, labels, f'Complexity: {comp.capitalize()}'])
-
-            file_suffix = score_name
-            if comp != 'all':
-                file_suffix += f'_complexity_{comp}'
-
-            out_df_max = out_df.groupby(['dataset']).max()
-
-            def _highlight_max_per_ds(s):
-                def _is_max(idx, val):
-                    return val >= out_df_max[s.name][idx[1]]
-                return ['font-weight: bold' if _is_max(idx, val) else '' for idx, val in s.items()]
-
-            # Remap series to friendly names
-            def _remap_series_names(s):
-                s.index = pd.Index(data=[MODELS_ALL.get(n, n) for n in s.index.values], name='Model')
-                return s
-
-            out_styler = out_df.style.apply(_highlight_max_per_ds).format(precision=3)
-            out_styler.to_excel(os.path.join(METRICS_PATH, score_name, f'{file_suffix}.xlsx'))
-
-            # Compile reduced versions of the table with global averages
-            for series in '_micro', '_macro':
-                out_df_reduced = out_df.loc[:, series, :].sort_values(f'mean_{main_score_col}', ascending=False)
-                out_df_reduced.name = 'Model'
-                if score_name == 'rouge':
-                    out_df_reduced.columns = ['Mean Precision', 'Mean Recall', 'Mean F1',
-                                              'Median Precision', 'Median Recall', 'Median F1']
-                else:
-                    out_df_reduced.columns = ['Mean Distance', 'Median Distance']
-                out_df_reduced = out_df_reduced.apply(_remap_series_names)
-
-                # XLSX
-                out_styler = out_df_reduced.style.highlight_max(props='font-weight: bold').format(precision=3)
-                out_styler.to_excel(os.path.join(METRICS_PATH, score_name,
-                                                 f'{file_suffix}{series}.xlsx'), float_format='%.3f')
-
-                # LaTeX
-                if score_name == 'rouge':
-                    out_df_reduced.columns = ['Mean Precision', 'Mean Recall', 'Mean $F_1$',
-                                              'Median Precision', 'Median Recall', 'Median $F_1$']
-                out_styler = out_df_reduced.style.highlight_max(props=r'bf:').format(precision=3)
-                out_styler.to_latex(os.path.join(METRICS_PATH, score_name, f'{file_suffix}{series}.tex'))
+            box, bar = _agg_model_at_complexity(comp, in_df, score_name, score_cols, main_score_col)
+            boxplot_data.append(box)
+            barplot_data.append(bar)
 
         if score_name == 'rouge':
             title_box = 'ROUGE-LSum Median $F_1$ Page Scores'
