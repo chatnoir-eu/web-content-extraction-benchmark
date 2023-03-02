@@ -95,13 +95,12 @@ def aggregate(score, model, dataset, exclude_dataset, complexity):
 
     from extraction_benchmark.eval import aggregate_scores
     try:
-        with click.progressbar(score, label='Aggregating scores') as progress:
-            for s in progress:
-                aggregate_scores(s, model, dataset, complexity)
+        for s in score:
+            aggregate_scores(s, model, dataset, complexity)
     except FileNotFoundError as e:
         raise click.FileError(e.filename, 'Please calculate complexity scores first.')
 
-    click.echo(f'Aggregation written to "{METRICS_PATH}"')
+    click.echo(f'Aggregations written to "{METRICS_PATH}"')
 
 
 @eval.command()
