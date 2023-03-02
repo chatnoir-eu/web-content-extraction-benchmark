@@ -17,3 +17,4 @@ from matplotlib.pyplot import *
 rcParams['pdf.fonttype'] = 42
 rcParams['font.sans-serif'] = ['Helvetica', 'Arial', 'DejaVu Sans']
 rcParams['font.family'] = 'sans-serif'
+rcParams['figure.dpi'] = 200

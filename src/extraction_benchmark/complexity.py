@@ -243,7 +243,7 @@ def visualize_clusters(quantile):
         ax.set_yticks(ticks=np.linspace(*ax.get_ylim(), 5), labels=[])
         ax.spines['right'].set_visible(False)
 
-    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.5), dpi=200)
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.5))
     sub_plt(ax1, 'kmeans_label', '$k$-Means Clustering', ['Cluster 0', 'Cluster 1'])
     sub_plt(ax2, 'complexity', 'Complexity Quantiles', ['Low', 'High'])
 
@@ -271,7 +271,7 @@ def visualize_datasets(datasets):
     # Sort by median
     complexities, datasets = zip(*sorted(zip(complexities, datasets), key=lambda x: x[0].median(), reverse=True))
 
-    plt.figure(figsize=(5, 3), dpi=200)
+    plt.figure(figsize=(5, 3))
     plt.boxplot(
         complexities,
         positions=range(len(complexities)),

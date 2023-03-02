@@ -60,6 +60,8 @@ MODELS = {k: _MODEL_FRIENDLY_NAME_MAP.get(k, k)
           for k in list_extractors(names_only=True, include_ensembles=False)}
 MODELS_ALL = {k: _MODEL_FRIENDLY_NAME_MAP.get(k, k)
               for k in list_extractors(names_only=True, include_ensembles=True)}
+MODELS_ENSEMBLE = [m for m in MODELS_ALL if m.startswith('ensemble_')]
+MODELS_BASELINE = ['bs4', 'html_text', 'inscriptis', 'lxml_cleaner', 'xpath_text']
 
 SCORES = [
     'rouge',
