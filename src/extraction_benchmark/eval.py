@@ -28,11 +28,6 @@ from extraction_benchmark import plt
 from extraction_benchmark.util import jsonl_to_dict, read_jsonl, tokenize_ws
 
 
-_BAR_COLOR = '#f2b66b'
-_MEDIAN_BAR_COLOR = '#dc7d22'
-_ERROR_BAR_COLOR = '#4d4d4d'
-
-
 class Tokenizer(tokenizers.Tokenizer):
     def tokenize(self, text):
         return tokenize_ws(text)
@@ -141,7 +136,7 @@ def _layout_ax(ax, angle_xticks=True, hlines=True):
 
 def _map_model_label(label):
     if label.get_text() in MODELS_ENSEMBLE:
-        label.set_color('steelblue')
+        label.set_color('#1767b0')
     elif label.get_text() in MODELS_BASELINE:
         label.set_color('gray')
     label.set_text(MODELS_ALL.get(label.get_text(), label.get_text()))
@@ -159,8 +154,7 @@ def _draw_performance_boxsubplot(ax, model_scores, xlabels, ylabel):
         model_scores,
         positions=range(len(xlabels)),
         labels=xlabels,
-        showfliers=False,
-        medianprops=dict(color=_MEDIAN_BAR_COLOR)
+        showfliers=False
     )
     _map_axis_tick_labels(ax.xaxis)
     ax.set_ylabel(ylabel)
@@ -172,10 +166,9 @@ def _draw_performance_barsubplot(ax, model_scores, lower_err, upper_err, xlabels
     ax.bar(
         xlabels,
         model_scores,
-        color=_BAR_COLOR,
         width=0.7,
         yerr=(lower_err, upper_err),
-        error_kw=dict(lw=0.75, capsize=5, capthick=0.75, ecolor=_ERROR_BAR_COLOR),
+        error_kw=dict(lw=0.75, capthick=0.75, ecolor=plt.ERROR_BAR_COLOR),
     )
     _map_axis_tick_labels(ax.xaxis)
     ax.set_ylabel(ylabel)
@@ -317,10 +310,9 @@ def _plot_score_histograms(title, score_df, out_file):
     for ax, m in zip(axs.flatten(), models):
         ax.hist(
             score_df[m, :, :],
-            bins=25,
-            color=_BAR_COLOR
+            bins=25
         )
-        ax.axvline(score_df[m, :, :].median(), color=_MEDIAN_BAR_COLOR, linewidth=0.75)
+        ax.axvline(score_df[m, :, :].median(), color=plt.MEDIAN_BAR_COLOR, linewidth=1)
         ax.set_ylabel(m)
         _map_model_label(ax.yaxis.get_label())
         ax.set_xticks([0, 0.5, 1])

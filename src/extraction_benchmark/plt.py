@@ -12,9 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from matplotlib.pyplot import *
+
+rcParams['figure.dpi'] = 200
 
 rcParams['pdf.fonttype'] = 42
 rcParams['font.sans-serif'] = ['Helvetica', 'Arial', 'DejaVu Sans']
 rcParams['font.family'] = 'sans-serif'
-rcParams['figure.dpi'] = 200
+
+MEDIAN_BAR_COLOR = '#e68a38'
+ERROR_BAR_COLOR = '#4d4d4d'
+
+rcParams['errorbar.capsize'] = 4
+rcParams['boxplot.meanprops.color'] = 'pink'
+rcParams['boxplot.flierprops.marker'] = '.'
+
+# Lighter version of tab10
+rcParams['axes.prop_cycle'] = cycler(color=['#53a1d4', '#ff993e', '#56b356'])

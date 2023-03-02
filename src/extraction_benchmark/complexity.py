@@ -233,7 +233,7 @@ def visualize_clusters(quantile):
                 y=filtered['y'],
                 s=5,
                 alpha=0.5,
-                label=l
+                label=l,
             )
         leg = ax.legend(loc='lower right', fontsize='small', borderpad=0.4, shadow=False)
         leg.get_frame().set_linewidth(0.0)
