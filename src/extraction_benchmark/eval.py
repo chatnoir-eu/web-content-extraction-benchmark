@@ -178,7 +178,7 @@ def _draw_performance_barsubplot(ax, model_scores, lower_err, upper_err, xlabels
 
 
 def _draw_performance_plot(plot_type, data, layout, suptitle, score_name):
-    fig, axs = plt.subplots(*layout, figsize=(9.5, 3.5 * len(data)))
+    fig, axs = plt.subplots(*layout, figsize=(9.5, 3.3 * len(data)))
 
     if layout == (1, 1):
         axs = [axs]
