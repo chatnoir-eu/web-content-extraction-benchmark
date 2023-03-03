@@ -231,12 +231,12 @@ def visualize_clusters(quantile):
             ax.scatter(
                 x=filtered['x'],
                 y=filtered['y'],
-                s=5,
-                alpha=0.5,
+                s=4,
+                alpha=0.75,
                 label=l,
             )
-        leg = ax.legend(loc='lower right', fontsize='small', borderpad=0.4, shadow=False)
-        leg.get_frame().set_linewidth(0.0)
+        ax.legend(loc='lower right', fontsize='small', borderpad=0.4, shadow=False,
+                  handlelength=0.5, handletextpad=0.5, edgecolor='none')
         ax.set_title(title, fontsize='medium')
         ax.spines['top'].set_visible(False)
         ax.set_xticks(ticks=np.linspace(*ax.get_xlim(), 5), labels=[])
