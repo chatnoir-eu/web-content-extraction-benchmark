@@ -24,7 +24,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
 from sklearn.manifold import TSNE
-from sklearn.metrics import matthews_corrcoef, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from resiliparse.parse.html import HTMLTree
@@ -298,12 +298,14 @@ def visualize_classes():
     plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity_classes_2d.pdf'))
     click.echo(f'Plots written to "{METRICS_COMPLEXITY_PATH}\n')
 
+    acc = accuracy_score(df_2d['complexity'], df_2d['logreg_label'])
     mcc = matthews_corrcoef(df_2d['complexity'], df_2d['logreg_label'])
     f1 = f1_score(df_2d['complexity'], df_2d['logreg_label'])
     prec = precision_score(df_2d['complexity'], df_2d['logreg_label'])
     rec = recall_score(df_2d['complexity'], df_2d['logreg_label'])
 
     click.echo(f'MCC: {mcc:.3f}')
+    click.echo(f'Accuracy: {acc:.3f}')
     click.echo(f'F1 Score: {f1:.3f}')
     click.echo(f'Precision: {prec:.3f}')
     click.echo(f'Recall: {rec:.3f}')
