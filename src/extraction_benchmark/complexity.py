@@ -264,15 +264,14 @@ def visualize_clusters(quantile):
         raise click.FileError(in_path, 'Please calculate page complexities first.')
 
     df = pd.read_csv(in_path, index_col=['hash_key', 'dataset'])
+    df['complexity'] = _binarize_complexity(df['complexity'], quantile)
     df_2d = _reduce_dim_2d(df, 'kmeans_label')
-    df_2d['complexity'] = _binarize_complexity(df['complexity'], quantile)
 
     _, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.5))
     _plot_scatter_axis(df_2d, ax1, 'kmeans_label', '$k$-Means Clustering', ['Cluster 0', 'Cluster 1'])
     _plot_scatter_axis(df_2d, ax2, 'complexity', 'Complexity Quantiles', ['Low', 'High'])
 
     plt.tight_layout(pad=0.5)
-    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.png'))
     plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.pdf'))
     df_2d.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.csv'))
 
