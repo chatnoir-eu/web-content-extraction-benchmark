@@ -22,7 +22,10 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.linear_model import LogisticRegression
 from sklearn.manifold import TSNE
+from sklearn.metrics import matthews_corrcoef, f1_score, precision_score, recall_score
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from resiliparse.parse.html import HTMLTree
 
@@ -141,15 +144,6 @@ def tsne_reduce_dim(X, n_components):
                 verbose=1).fit_transform(X)
 
 
-def pca_reduce_dim(X, n_components):
-    return PCA(n_components=n_components).fit_transform(X)
-
-
-def get_kmeans_labels(X, n_clusters):
-    # noinspection PyProtectedMember,PyUnresolvedReferences
-    return KMeans(n_clusters=n_clusters, max_iter=500, n_init=30).fit(X).labels_
-
-
 def extract_page_features(dataset, parallelism):
     with Pool(processes=parallelism) as pool:
         with click.progressbar(pool.imap_unordered(calculate_dataset_features, dataset),
@@ -158,8 +152,7 @@ def extract_page_features(dataset, parallelism):
                 pass
 
 
-# noinspection DuplicatedCode
-def kmeans_cluster(dataset, reduce_dim, n_clusters):
+def _load_html_features(dataset):
     df_features = pd.DataFrame()
     df_complexity = pd.DataFrame()
     with click.progressbar(dataset, label='Loading datasets') as progress:
@@ -175,30 +168,88 @@ def kmeans_cluster(dataset, reduce_dim, n_clusters):
     df_features.set_index(['hash_key', 'dataset'], inplace=True)
     df_complexity.set_index(['hash_key', 'dataset'], inplace=True)
 
-    df_features = df_features.join(df_complexity, how='inner')
+    return df_features.join(df_complexity, how='inner')
 
+
+def _reduce_dim_2d(df, label_column):
+    click.echo('Reducing dimensionality to 2D for visualization...')
+
+    scaler = StandardScaler()
+    X = scaler.fit_transform(df)
+    X = tsne_reduce_dim(X, 2)
+
+    df_2d = pd.DataFrame(X, columns=['x', 'y'], index=df.index)
+    df_2d[label_column] = df[label_column]
+    df_2d['complexity'] = df['complexity']
+
+    return df_2d
+
+
+def _binarize_complexity(values, quantile):
+    p = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_quantiles.csv')
+    if not os.path.isfile(p):
+        raise click.FileError(p, 'Please calculate page complexity quantiles first.')
+    quantiles = pd.read_csv(p, index_col=0)
+
+    return [int(x >= quantiles.loc[float(quantile)]['complexity']) for x in values]
+
+
+def logistic_regression_classify(dataset, train_split_size, quantile):
+    df_features = _load_html_features(dataset)
+    df_features['complexity'] = _binarize_complexity(df_features['complexity'], quantile)
+
+    click.echo('Training classifier and predicting pages...')
+    idx_train, idx_test = train_test_split(df_features.index.values, train_size=train_split_size)
+
+    df_train = df_features[df_features.index.isin(idx_train)]
+    df_test = df_features[~df_features.index.isin(idx_train)]
+
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(df_train.drop(columns='complexity'))
+    X_test = scaler.fit_transform(df_test.drop(columns='complexity'))
+    y_pred = LogisticRegression().fit(X_train, df_train['complexity']).predict(X_test)
+
+    df_test = df_test.assign(logreg_label=y_pred)
+    df_test.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_classes.csv'))
+    click.echo(f'Classification written to "{METRICS_COMPLEXITY_PATH}"')
+
+
+def kmeans_cluster(dataset, reduce_dim, n_clusters):
+    df_features = _load_html_features(dataset)
     scaler = StandardScaler()
     X = scaler.fit_transform(df_features.drop(columns='complexity'))
 
     if reduce_dim:
-        X = pca_reduce_dim(X, reduce_dim)
+        X = PCA(n_components=reduce_dim).fit_transform(X)
 
     click.echo('Clustering datapoints...')
-    labels = get_kmeans_labels(X, n_clusters)
+    labels = KMeans(n_clusters=n_clusters, max_iter=500, n_init=30).fit(X).labels_
+
     # Ensure cluster labels are aligned with quantiles
     if sum(labels[labels == 1]) < len(labels[labels == 0]):
         labels = 1 - labels
     df_features['kmeans_label'] = labels
-    df_features.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'kmeans_labels.csv'))
-
-    click.echo('Reducing dimensionality to 2D for visualization...')
-    X = tsne_reduce_dim(X, 2)
-    df_2d = pd.DataFrame(X, columns=['x', 'y'], index=df_features.index)
-    df_2d['kmeans_label'] = df_features['kmeans_label']
-    df_2d['complexity'] = df_features['complexity']
-
-    df_2d.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.csv'))
+    df_features.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters.csv'))
     click.echo(f'Clustering written to "{METRICS_COMPLEXITY_PATH}"')
+
+
+def _plot_scatter_axis(df, ax, label_col, title, labels):
+    for i, l in enumerate(labels):
+        filtered = df[df[label_col] == i]
+        ax.scatter(
+            x=filtered['x'],
+            y=filtered['y'],
+            s=4,
+            alpha=0.75,
+            label=l,
+        )
+    ax.legend(loc='lower right', fontsize='small', borderpad=0.4, shadow=False,
+              handlelength=0.5, handletextpad=0.5, edgecolor='none')
+    ax.set_title(title, fontsize='medium')
+    ax.spines['top'].set_visible(False)
+    ax.set_xticks(ticks=np.linspace(*ax.get_xlim(), 5), labels=[])
+    ax.set_yticks(ticks=np.linspace(*ax.get_ylim(), 5), labels=[])
+    ax.spines['right'].set_visible(False)
 
 
 def visualize_clusters(quantile):
@@ -208,50 +259,55 @@ def visualize_clusters(quantile):
     :param quantile: complexity quantile to align with cluster boundaries
     """
 
-    p = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_quantiles.csv')
-    if not os.path.isfile(p):
-        raise click.FileError(p, 'Please calculate page complexities first.')
-    quantiles = pd.read_csv(p, index_col=0)
-
-    def binarize_complexity(x):
-        x['complexity'] = int(x['complexity'] >= quantiles.loc[float(quantile)]['complexity'])
-        return x
-
-    in_path = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.csv')
+    in_path = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters.csv')
     if not os.path.isfile(in_path):
-        raise click.FileError(p, 'Please calculate page complexities first.')
+        raise click.FileError(in_path, 'Please calculate page complexities first.')
 
-    df_2d = pd.read_csv(in_path, index_col='hash_key')
-    df_2d = df_2d.apply(binarize_complexity, axis='columns')
-
-    def sub_plt(ax, label_col, title, labels):
-
-        for i, l in enumerate(labels):
-            filtered = df_2d[df_2d[label_col] == i]
-            ax.scatter(
-                x=filtered['x'],
-                y=filtered['y'],
-                s=4,
-                alpha=0.75,
-                label=l,
-            )
-        ax.legend(loc='lower right', fontsize='small', borderpad=0.4, shadow=False,
-                  handlelength=0.5, handletextpad=0.5, edgecolor='none')
-        ax.set_title(title, fontsize='medium')
-        ax.spines['top'].set_visible(False)
-        ax.set_xticks(ticks=np.linspace(*ax.get_xlim(), 5), labels=[])
-        ax.set_yticks(ticks=np.linspace(*ax.get_ylim(), 5), labels=[])
-        ax.spines['right'].set_visible(False)
+    df = pd.read_csv(in_path, index_col=['hash_key', 'dataset'])
+    df_2d = _reduce_dim_2d(df, 'kmeans_label')
+    df_2d['complexity'] = _binarize_complexity(df['complexity'], quantile)
 
     _, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.5))
-    sub_plt(ax1, 'kmeans_label', '$k$-Means Clustering', ['Cluster 0', 'Cluster 1'])
-    sub_plt(ax2, 'complexity', 'Complexity Quantiles', ['Low', 'High'])
+    _plot_scatter_axis(df_2d, ax1, 'kmeans_label', '$k$-Means Clustering', ['Cluster 0', 'Cluster 1'])
+    _plot_scatter_axis(df_2d, ax2, 'complexity', 'Complexity Quantiles', ['Low', 'High'])
 
     plt.tight_layout(pad=0.5)
-    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity_clusters_2d.png'))
-    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity_clusters_2d.pdf'))
+    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.png'))
+    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.pdf'))
+    df_2d.to_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_clusters_2d.csv'))
 
     click.echo(f'Plots written to "{METRICS_COMPLEXITY_PATH}')
+
+
+def visualize_classes():
+    """
+    Visualize predicted classes of HTML page features.
+    """
+
+    in_path = os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_classes.csv')
+    if not os.path.isfile(in_path):
+        raise click.FileError(in_path, 'Please calculate page complexities first.')
+
+    df = pd.read_csv(in_path, index_col=['hash_key', 'dataset'])
+    df_2d = _reduce_dim_2d(df, 'logreg_label')
+
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.5))
+    _plot_scatter_axis(df_2d, ax1, 'logreg_label', 'Predicted Classes', ['Low', 'High'])
+    _plot_scatter_axis(df_2d, ax2, 'complexity', 'Complexity Quantiles', ['Low', 'High'])
+
+    plt.tight_layout(pad=0.5)
+    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity_classes_2d.pdf'))
+    click.echo(f'Plots written to "{METRICS_COMPLEXITY_PATH}\n')
+
+    mcc = matthews_corrcoef(df_2d['complexity'], df_2d['logreg_label'])
+    f1 = f1_score(df_2d['complexity'], df_2d['logreg_label'])
+    prec = precision_score(df_2d['complexity'], df_2d['logreg_label'])
+    rec = recall_score(df_2d['complexity'], df_2d['logreg_label'])
+
+    click.echo(f'MCC: {mcc:.3f}')
+    click.echo(f'F1 Score: {f1:.3f}')
+    click.echo(f'Precision: {prec:.3f}')
+    click.echo(f'Recall: {rec:.3f}')
 
 
 def visualize_datasets(datasets):
@@ -287,7 +343,6 @@ def visualize_datasets(datasets):
         plt.axhline(y, linewidth=0.25, color='lightgrey', zorder=-1)
 
     plt.tight_layout()
-    plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity.png'))
     plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity.pdf'))
 
     complexity_quantiles = pd.read_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_quantiles.csv'), index_col=0)

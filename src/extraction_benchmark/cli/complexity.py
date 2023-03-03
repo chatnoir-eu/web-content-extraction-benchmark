@@ -108,3 +108,34 @@ def visualize_clusters(quantile):
 
     from extraction_benchmark.complexity import visualize_clusters
     visualize_clusters(quantile)
+
+
+@complexity.command()
+@click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
+@click.option('-s', '--split-size', type=click.FloatRange(0.1, 0.9), default=0.25, help='Training split size')
+@click.option('-q', '--quantile', type=click.Choice(['0.25', '0.33', '0.5', '0.66', '0.75']), default='0.5',
+              help='Quantile boundary')
+def classify(dataset, split_size, quantile):
+    """
+    Train and evaluate a logistic regression classifier.
+
+    Train a logistic regression classifier on a split of the complexity scores and classify the remaining ones.
+    """
+    if 'all' in dataset:
+        dataset = sorted(DATASETS)
+
+    from extraction_benchmark.complexity import logistic_regression_classify
+    try:
+        logistic_regression_classify(dataset, split_size, quantile)
+    except FileNotFoundError as e:
+        raise click.FileError(e.filename, 'Make sure HTML features have been calculated.')
+
+
+@complexity.command()
+def visualize_classes():
+    """
+    Visualize logistic regression classification.
+    """
+
+    from extraction_benchmark.complexity import visualize_classes
+    visualize_classes()
