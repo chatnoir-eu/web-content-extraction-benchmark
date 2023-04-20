@@ -311,11 +311,13 @@ def visualize_classes():
     click.echo(f'Recall: {rec:.3f}')
 
 
-def visualize_datasets(datasets):
+def visualize_datasets(datasets, low_quantile='0.25', high_quantile='0.75'):
     """
     Visualize median complexity of the datasets.
 
     :param datasets: list of dataset names
+    :param low_quantile: low-complexity quantile threshold
+    :param high_quantile: high-complexity quantile threshold
     """
     complexities = []
     with click.progressbar(datasets, label='Loading datasets') as progress:
@@ -347,7 +349,8 @@ def visualize_datasets(datasets):
     plt.savefig(os.path.join(METRICS_COMPLEXITY_PATH, f'complexity.pdf'))
 
     complexity_quantiles = pd.read_csv(os.path.join(METRICS_COMPLEXITY_PATH, 'complexity_quantiles.csv'), index_col=0)
-    quantile_threshold = complexity_quantiles.loc[0.33]['complexity']
+    quantile_threshold_low = complexity_quantiles.loc[float(low_quantile)]['complexity']
+    quantile_threshold_high = complexity_quantiles.loc[float(high_quantile)]['complexity']
 
     # Sort back into alphabetical order
     complexities, datasets = zip(*sorted(zip(complexities, datasets), key=lambda x: x[1]))
@@ -355,10 +358,15 @@ def visualize_datasets(datasets):
     click.echo('Dataset stats:')
     click.echo('--------------')
     for i, compl in enumerate(complexities):
+        low_count = compl[compl < quantile_threshold_low].count()
+        medium_count = compl[(compl >= quantile_threshold_low) & (compl < quantile_threshold_high)].count()
+        high_count = compl[compl >= quantile_threshold_high].count()
+
         click.echo(f'{datasets[i]:<20} ', nl=False)
-        click.echo(f'pages: {compl.count():<10} ', nl=False)
-        click.echo(f'pages low: {compl[compl < quantile_threshold].count():<10} ', nl=False)
-        click.echo(f'pages high: {compl[compl >= quantile_threshold].count():<10} ', nl=False)
+        click.echo(f'pages: {compl.count():<8} ', nl=False)
+        click.echo(f'pages low: {low_count:<8} ', nl=False)
+        click.echo(f'pages medium: {medium_count:<8} ', nl=False)
+        click.echo(f'pages high: {high_count:<8} ', nl=False)
         click.echo(f'median complexity: {compl.median():.2f}', nl=False)
         click.echo()
     click.echo()

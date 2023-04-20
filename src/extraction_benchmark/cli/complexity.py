@@ -48,7 +48,11 @@ def calculate(dataset):
 
 @complexity.command()
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
-def visualize(dataset):
+@click.option('-l', '--low-quantile', type=click.Choice(['0.25', '0.33', '0.5', '0.66', '0.75']),
+              help='Low-complexity quantile threshold', default='0.25')
+@click.option('-h', '--high-quantile', type=click.Choice(['0.25', '0.33', '0.5', '0.66', '0.75']),
+              help='High-complexity quantile threshold', default='0.75')
+def visualize(dataset, low_quantile, high_quantile):
     """
     Visualize the median complexity of the datasets.
     """
@@ -56,7 +60,7 @@ def visualize(dataset):
         dataset = sorted(DATASETS)
 
     from extraction_benchmark.complexity import visualize_datasets
-    visualize_datasets(dataset)
+    visualize_datasets(dataset, low_quantile, high_quantile)
 
 
 @complexity.command()
