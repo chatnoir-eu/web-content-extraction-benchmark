@@ -72,8 +72,8 @@ def score(metric, dataset, model, eval_ensembles, parallelism):
 @click.option('-m', '--model', type=click.Choice(['all', *MODELS_ALL]), default=['all'], multiple=True)
 @click.option('-d', '--dataset', type=click.Choice(['all', *DATASETS]), default=['all'], multiple=True)
 @click.option('-x', '--exclude-dataset', type=click.Choice(DATASETS), default=[], multiple=True)
-@click.option('-c', '--complexity', type=click.Choice(['all', *COMPLEXITIES]), default=['all'],
-              required=True, multiple=True)
+@click.option('-c', '--complexity', type=click.Choice(['all', *COMPLEXITIES]), default=['all', 'low', 'high'],
+              required=True, multiple=True, show_default=True)
 def aggregate(score, model, dataset, exclude_dataset, complexity):
     """
     Aggregate calculated performance metrics.

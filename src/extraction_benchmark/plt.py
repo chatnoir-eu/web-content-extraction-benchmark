@@ -29,4 +29,4 @@ rcParams['boxplot.meanprops.color'] = 'pink'
 rcParams['boxplot.flierprops.marker'] = '.'
 
 # Lighter version of tab10
-rcParams['axes.prop_cycle'] = cycler(color=['#53a1d4', '#ff993e', '#56b356'])
+rcParams['axes.prop_cycle'] = cycler(color=['#6caeda', '#ff993e', '#56b356'])

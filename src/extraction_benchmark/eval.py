@@ -15,7 +15,6 @@
 from itertools import pairwise, product
 import math
 from multiprocessing import get_context
-import os
 
 import click
 from Levenshtein import ratio as levenshtein_ratio
