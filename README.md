@@ -160,9 +160,9 @@ The paper can be cited as follows:
   publisher = {ACM},
   site =      {Taipei, Taiwan},
   title =     {{An Empirical Comparison of Web Content Extraction Algorithms}},
-  todo =      {Main Content Extraction, Boilerplate Removal, Web Data Extraction},
+  keywords =  {Main Content Extraction, Boilerplate Removal, Web Data Extraction},
   year =      2023,
   url =       {https://dl.acm.org/doi/10.1145/3539618.3591920},
-  doi =       {10.1145/3404835.3463025}
+  doi =       {10.1145/3539618.3591920}
 }
 ```
