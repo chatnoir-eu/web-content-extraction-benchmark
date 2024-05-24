@@ -49,7 +49,7 @@ lxml = "~4.9.2"
 news-please = "~1.5.22"
 newspaper3k = "~0.2.8"
 readability-lxml = "~0.8.1"
-resiliparse = "~0.13.7"
+resiliparse = "~0.14.7"
 trafilatura = "~1.4.1"
 # Install local wheels for Dragnet and ExtractNet, whose upstream versions have incompatible dependencies
 dragnet = [
@@ -60,7 +60,8 @@ dragnet = [
 extractnet = [
     {path = "third-party/extractnet-2.0.7-cp39-cp39-linux_x86_64.whl", python = "~3.9"},
     {path = "third-party/extractnet-2.0.7-cp310-cp310-linux_x86_64.whl", python = "~3.10"},
-    {path = "third-party/extractnet-2.0.7-cp311-cp311-linux_x86_64.whl", python = "~3.11"},
+# extractnet has cchardet dependency, which cannot build with Python 3.11 and above
+#    {path = "third-party/extractnet-2.0.7-cp311-cp311-linux_x86_64.whl", python = "~3.11"},
 ]
 
 # BoilerNet dependencies
