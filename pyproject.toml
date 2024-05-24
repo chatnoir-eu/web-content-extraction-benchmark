@@ -11,7 +11,7 @@ authors = [
     "Sanket Gupta"
 ]
 homepage = "https://webis.de"
-repository = ""
+repository = "https://github.com/chatnoir-eu/web-content-extraction-benchmark.git"
 readme = "README.md"
 license = "Apache-2.0"
 packages = [
