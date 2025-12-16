@@ -354,7 +354,7 @@ def aggregate_scores(score_name, models, datasets, complexities):
 
     if score_name == 'rouge':
         title_box = 'ROUGE-LSum Median $F_1$ Page Scores'
-        title_bar = 'ROUGE-LSum Mean $F_1$ Page Scores (Macro Average)'
+        title_bar = 'ROUGE-LSum Mean $F_1$ Page Scores (Micro Average)'
         title_hist = 'ROUGE-LSum $F_1$ Page Scores'
     else:
         title_hist = 'Normalized Levenshtein Distances'
